@@ -1,4 +1,4 @@
-import { useListBooks } from "@workspace/api-client-react"
+import { useListBooks, getListBooksQueryKey } from "@workspace/api-client-react"
 import { Book } from "@workspace/api-client-react/src/generated/api.schemas"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Star, BookOpen, Upload, Sparkles, Loader2 } from "lucide-react"
 import { Link } from "wouter"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { ImportBooksDialog } from "@/components/import-books-dialog"
+import { useQueryClient } from "@tanstack/react-query"
 import { useUser } from "@clerk/react"
 import { useTranslation } from "react-i18next"
 
@@ -84,6 +85,7 @@ function SkeletonGrid() {
 export function Library() {
   const { t } = useTranslation()
   const { user, isLoaded: clerkLoaded } = useUser()
+  const qc = useQueryClient()
   const [tab, setTab] = useState<'all' | 'reading' | 'want_to_read' | 'read'>('all')
   const [importOpen, setImportOpen] = useState(false)
   const [enrichingCount, setEnrichingCount] = useState(0)
@@ -110,15 +112,17 @@ export function Library() {
     setBannerDismissed(false)
   }
 
-  const handleImported = ({ enriching }: { imported: number; skipped: number; enriching: number }) => {
+  const handleImported = useCallback(({ enriching }: { imported: number; skipped: number; enriching: number }) => {
     if (enriching <= 0) return
     setEnrichingCount(enriching)
     if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
-    // Show the banner for ~8 seconds then fade out — enrichment is fire-and-forget
+    // Show the banner for ~8 seconds, then hide it and re-fetch so enriched
+    // page counts / genres appear without requiring a manual refresh.
     enrichTimerRef.current = setTimeout(() => {
       setEnrichingCount(0)
+      qc.invalidateQueries({ queryKey: getListBooksQueryKey() })
     }, 8000)
-  }
+  }, [qc])
 
   // Clean up timer on unmount
   useEffect(() => {
