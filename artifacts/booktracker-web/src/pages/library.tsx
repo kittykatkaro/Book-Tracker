@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { Star, BookOpen, Upload, Sparkles } from "lucide-react"
+import { Star, BookOpen, Upload, Sparkles, Loader2 } from "lucide-react"
 import { Link } from "wouter"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ImportBooksDialog } from "@/components/import-books-dialog"
 import { useUser } from "@clerk/react"
 import { useTranslation } from "react-i18next"
@@ -86,6 +86,8 @@ export function Library() {
   const { user, isLoaded: clerkLoaded } = useUser()
   const [tab, setTab] = useState<'all' | 'reading' | 'want_to_read' | 'read'>('all')
   const [importOpen, setImportOpen] = useState(false)
+  const [enrichingCount, setEnrichingCount] = useState(0)
+  const enrichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const storageKey = user?.id ? `banner_dismissed_${user.id}` : null
   const [bannerDismissed, setBannerDismissed] = useState(() => {
@@ -102,6 +104,23 @@ export function Library() {
     if (storageKey) localStorage.setItem(storageKey, 'true')
     setBannerDismissed(true)
   }
+
+  const handleImported = ({ enriching }: { imported: number; skipped: number; enriching: number }) => {
+    if (enriching <= 0) return
+    setEnrichingCount(enriching)
+    if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
+    // Show the banner for ~8 seconds then fade out — enrichment is fire-and-forget
+    enrichTimerRef.current = setTimeout(() => {
+      setEnrichingCount(0)
+    }, 8000)
+  }
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
+    }
+  }, [])
 
   const { data: books, isLoading } = useListBooks(
     tab === 'all' ? undefined : { status: tab }
@@ -163,7 +182,17 @@ export function Library() {
         </div>
       )}
 
-      <ImportBooksDialog open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportBooksDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={handleImported} />
+
+      {/* Enriching banner — appears briefly after import, then auto-hides */}
+      {enrichingCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
+          <span className="text-foreground">
+            Enriching {enrichingCount} book{enrichingCount !== 1 ? "s" : ""} — filling in page counts and genres from OpenLibrary…
+          </span>
+        </div>
+      )}
 
       <Tabs defaultValue="all" onValueChange={(v) => setTab(v as any)} className="w-full">
         <TabsList className="bg-transparent border-b rounded-none w-full justify-start h-auto p-0 gap-6">

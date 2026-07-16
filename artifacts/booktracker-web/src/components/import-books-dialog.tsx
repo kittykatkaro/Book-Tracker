@@ -46,7 +46,19 @@ function StatusLabel({ status }: { status: ParsedBook["status"] }) {
   return <span className="text-muted-foreground text-xs">{t("importDialog.statusWantToRead")}</span>;
 }
 
-export function ImportBooksDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+// ---------------------------------------------------------------------------
+// Main dialog
+// ---------------------------------------------------------------------------
+
+export function ImportBooksDialog({
+  open,
+  onClose,
+  onImported,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onImported?: (result: { imported: number; skipped: number; enriching: number }) => void;
+}) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -125,6 +137,7 @@ export function ImportBooksDialog({ open, onClose }: { open: boolean; onClose: (
           ? t("importDialog.skippedDesc", { count: data.skipped })
           : t("importDialog.allAdded"),
       });
+      onImported?.({ imported: data.imported, skipped: data.skipped, enriching: data.enriching ?? 0 });
       handleClose();
     } catch (err: any) {
       toast({ title: t("importDialog.errorImportFailed"), description: err?.message, variant: "destructive" });
