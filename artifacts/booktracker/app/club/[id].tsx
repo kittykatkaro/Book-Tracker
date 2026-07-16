@@ -58,6 +58,7 @@ interface ClubDetail {
   description: string | null;
   ownerId: string;
   inviteCode: string;
+  hasPassword: boolean;
   members: ClubMember[];
   books: ClubBook[];
   myRole: 'owner' | 'member';
@@ -398,10 +399,13 @@ export default function ClubDetailScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={[styles.screenTitle, { color: colors.foreground }]} numberOfLines={1}>
             {club.name}
           </Text>
+          {club.hasPassword && (
+            <Feather name="lock" size={13} color={colors.mutedForeground} />
+          )}
         </View>
         <Pressable onPress={handleCopyCode} style={[styles.codeChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Text style={[styles.codeText, { color: colors.foreground }]}>{club.inviteCode}</Text>

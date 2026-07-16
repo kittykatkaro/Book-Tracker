@@ -5,7 +5,7 @@ import { useUser } from "@clerk/react";
 import { customFetch } from "@workspace/api-client-react";
 import {
   ArrowLeft, Copy, Check, BookOpen, Users, Plus, Trash2,
-  MessageSquare, ChevronRight, BookMarked, LogOut, Loader2,
+  MessageSquare, ChevronRight, BookMarked, LogOut, Loader2, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +74,7 @@ interface ClubDetail {
   description: string | null;
   ownerId: string;
   inviteCode: string;
+  hasPassword: boolean;
   members: ClubMember[];
   books: ClubBook[];
   myRole: "owner" | "member";
@@ -564,6 +565,15 @@ export function ClubDetail() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-serif text-3xl font-bold">{club.name}</h1>
+                {club.hasPassword && (
+                  <span
+                    title="Password protected"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-secondary rounded-full px-2 py-0.5"
+                  >
+                    <Lock className="h-3 w-3" />
+                    Private
+                  </span>
+                )}
                 {club.myRole === "owner" && (
                   <Badge variant="secondary">Owner</Badge>
                 )}

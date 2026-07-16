@@ -12,6 +12,8 @@ export const bookClubsTable = pgTable("book_clubs", {
   description: text("description"),
   ownerId: text("owner_id").notNull(),
   inviteCode: text("invite_code").notNull().unique(),
+  /** SHA-256 hash of the club password; null means no password required */
+  password: text("password"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

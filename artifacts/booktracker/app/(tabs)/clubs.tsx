@@ -29,6 +29,7 @@ interface ClubSummary {
   name: string;
   description: string | null;
   inviteCode: string;
+  hasPassword: boolean;
   memberCount: number;
   bookCount: number;
   latestBook: { title: string; author: string; coverColor: string } | null;
@@ -63,6 +64,9 @@ function CreateModal({
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [passwordEnabled, setPasswordEnabled] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const displayName =
@@ -72,12 +76,11 @@ function CreateModal({
     'Reader';
 
   const mutation = useMutation({
-    mutationFn: (data: { name: string; description: string; displayName: string }) =>
+    mutationFn: (data: { name: string; description: string; displayName: string; password?: string }) =>
       customFetch('/api/clubs', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clubs'] });
-      setName('');
-      setDescription('');
+      setName(''); setDescription(''); setPassword(''); setPasswordEnabled(false);
       onClose();
     },
     onError: (err: Error) => setError(err.message),
@@ -109,6 +112,46 @@ function CreateModal({
             numberOfLines={3}
           />
 
+          {/* Password toggle */}
+          <Pressable
+            onPress={() => { setPasswordEnabled(!passwordEnabled); setPassword(''); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 2 }}
+          >
+            <View style={[styles.checkbox, passwordEnabled && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+              {passwordEnabled && <Feather name="check" size={10} color="#fff" />}
+            </View>
+            <Feather name="lock" size={13} color={colors.mutedForeground} />
+            <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_400Regular', fontSize: 14 }}>
+              Password-protect this club
+            </Text>
+          </Pressable>
+
+          {passwordEnabled && (
+            <>
+              <Text style={[styles.inputLabel, { color: colors.mutedForeground, marginTop: 8 }]}>Club password</Text>
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.border, paddingRight: 60 }]}
+                  placeholder="Members will need this to join"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}
+                >
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+              <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 4, marginBottom: 4 }}>
+                Share this with invited members — they'll need the code and password.
+              </Text>
+            </>
+          )}
+
           {error ? <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text> : null}
 
           <View style={styles.modalActions}>
@@ -118,10 +161,10 @@ function CreateModal({
             <Pressable
               onPress={() => {
                 setError('');
-                mutation.mutate({ name, description, displayName });
+                mutation.mutate({ name, description, displayName, password: passwordEnabled ? password : undefined });
               }}
-              disabled={!name.trim() || mutation.isPending}
-              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: !name.trim() || mutation.isPending ? 0.6 : 1 }]}
+              disabled={!name.trim() || (passwordEnabled && !password.trim()) || mutation.isPending}
+              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: !name.trim() || (passwordEnabled && !password.trim()) || mutation.isPending ? 0.6 : 1 }]}
             >
               {mutation.isPending ? (
                 <ActivityIndicator color={colors.primaryForeground} size="small" />
@@ -152,6 +195,8 @@ function JoinModal({
   const { user } = useUser();
   const qc = useQueryClient();
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const displayName =
@@ -161,11 +206,11 @@ function JoinModal({
     'Reader';
 
   const mutation = useMutation({
-    mutationFn: (data: { inviteCode: string; displayName: string }) =>
+    mutationFn: (data: { inviteCode: string; displayName: string; password?: string }) =>
       customFetch('/api/clubs/join', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clubs'] });
-      setCode('');
+      setCode(''); setPassword('');
       onClose();
     },
     onError: (err: Error) => setError(err.message),
@@ -177,9 +222,10 @@ function JoinModal({
         <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>Join a book club</Text>
           <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
-            Enter the invite code shared by a club member.
+            Enter the invite code and password (if required).
           </Text>
 
+          <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>Invite code</Text>
           <TextInput
             style={[styles.input, styles.codeInput, { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.border }]}
             placeholder="e.g. ABCD1234"
@@ -190,6 +236,31 @@ function JoinModal({
             autoCorrect={false}
           />
 
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginBottom: 4 }}>
+            <Feather name="lock" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.inputLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
+              Password <Text style={{ fontFamily: 'Inter_400Regular' }}>(if required)</Text>
+            </Text>
+          </View>
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.border, paddingRight: 60 }]}
+              placeholder="Leave blank if no password"
+              placeholderTextColor={colors.mutedForeground}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Pressable
+              onPress={() => setShowPassword(!showPassword)}
+              style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}
+            >
+              <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
           {error ? <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text> : null}
 
           <View style={styles.modalActions}>
@@ -199,7 +270,7 @@ function JoinModal({
             <Pressable
               onPress={() => {
                 setError('');
-                mutation.mutate({ inviteCode: code, displayName });
+                mutation.mutate({ inviteCode: code, displayName, password: password || undefined });
               }}
               disabled={!code.trim() || mutation.isPending}
               style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: !code.trim() || mutation.isPending ? 0.6 : 1 }]}
@@ -244,6 +315,9 @@ function ClubCard({ club, colors }: { club: ClubSummary; colors: ReturnType<type
             <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>
               {club.name}
             </Text>
+            {club.hasPassword && (
+              <Feather name="lock" size={12} color={colors.mutedForeground} />
+            )}
             {club.myRole === 'owner' && (
               <View style={[styles.roleBadge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
                 <Text style={[styles.roleBadgeText, { color: colors.mutedForeground }]}>Owner</Text>
@@ -443,5 +517,9 @@ const styles = StyleSheet.create({
   primaryBtn: {
     flex: 1, borderRadius: 12, paddingVertical: 13,
     alignItems: 'center', justifyContent: 'center',
+  },
+  checkbox: {
+    width: 16, height: 16, borderRadius: 4, borderWidth: 1.5,
+    borderColor: '#aaa', alignItems: 'center', justifyContent: 'center',
   },
 });

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { eq, desc, and, count } from "drizzle-orm";
+import { createHash } from "crypto";
 import { getAuth } from "@clerk/express";
 import {
   db,
@@ -31,6 +32,19 @@ function generateInviteCode(): string {
 
 function randomColor(): string {
   return COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)];
+}
+
+/** Hash a plain-text club password using SHA-256. */
+function hashPassword(pw: string): string {
+  return createHash("sha256").update(pw.trim()).digest("hex");
+}
+
+/** Strip the raw password hash from a club record and add `hasPassword`. */
+function formatClub<T extends { password: string | null }>(
+  club: T,
+): Omit<T, "password"> & { hasPassword: boolean } {
+  const { password, ...rest } = club;
+  return { ...rest, hasPassword: !!password };
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +116,7 @@ router.get("/", requireAuth, async (req, res) => {
           .limit(1);
 
         return {
-          ...club,
+          ...formatClub(club),
           memberCount: Number(memberCount),
           bookCount: Number(bookCount),
           latestBook: latestBook ?? null,
@@ -122,16 +136,18 @@ router.get("/", requireAuth, async (req, res) => {
 router.post("/", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
-    const { name, description, displayName } = req.body as {
+    const { name, description, displayName, password } = req.body as {
       name: string;
       description?: string;
       displayName?: string;
+      password?: string;
     };
 
     if (!name?.trim()) return res.status(400).json({ error: "name is required" });
 
     const clubId = generateId();
     const now = new Date();
+    const passwordHash = password?.trim() ? hashPassword(password) : null;
 
     const [club] = await db
       .insert(bookClubsTable)
@@ -141,6 +157,7 @@ router.post("/", requireAuth, async (req, res) => {
         description: description?.trim() ?? null,
         ownerId: userId,
         inviteCode: generateInviteCode(),
+        password: passwordHash,
         createdAt: now,
         updatedAt: now,
       })
@@ -156,7 +173,7 @@ router.post("/", requireAuth, async (req, res) => {
     });
 
     return res.status(201).json({
-      ...club,
+      ...formatClub(club),
       memberCount: 1,
       bookCount: 0,
       latestBook: null,
@@ -172,9 +189,10 @@ router.post("/", requireAuth, async (req, res) => {
 router.post("/join", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
-    const { inviteCode, displayName } = req.body as {
+    const { inviteCode, displayName, password } = req.body as {
       inviteCode: string;
       displayName?: string;
+      password?: string;
     };
 
     if (!inviteCode?.trim()) return res.status(400).json({ error: "inviteCode is required" });
@@ -185,6 +203,16 @@ router.post("/join", requireAuth, async (req, res) => {
       .where(eq(bookClubsTable.inviteCode, inviteCode.trim().toUpperCase()));
 
     if (!club) return res.status(404).json({ error: "Invalid invite code" });
+
+    // Password check — only if the club has one
+    if (club.password) {
+      if (!password?.trim()) {
+        return res.status(403).json({ error: "This club requires a password", code: "password_required" });
+      }
+      if (hashPassword(password) !== club.password) {
+        return res.status(403).json({ error: "Incorrect password", code: "wrong_password" });
+      }
+    }
 
     const existing = await getMembership(club.id, userId);
     if (existing) return res.status(409).json({ error: "Already a member" });
@@ -198,7 +226,7 @@ router.post("/join", requireAuth, async (req, res) => {
       joinedAt: new Date(),
     });
 
-    return res.status(200).json({ club });
+    return res.status(200).json({ club: formatClub(club) });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Failed to join club" });
@@ -240,7 +268,7 @@ router.get("/:id", requireAuth, async (req, res) => {
     );
 
     return res.json({
-      ...club,
+      ...formatClub(club),
       members,
       books: booksWithCounts,
       myRole: membership.role,
@@ -261,17 +289,25 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if (!club) return res.status(404).json({ error: "Not found" });
     if (club.ownerId !== userId) return res.status(403).json({ error: "Owner only" });
 
-    const { name, description } = req.body as { name?: string; description?: string };
+    const { name, description, password } = req.body as {
+      name?: string;
+      description?: string;
+      /** Empty string removes the password; undefined leaves it unchanged */
+      password?: string;
+    };
     const updates: Partial<typeof bookClubsTable.$inferInsert> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name.trim();
     if (description !== undefined) updates.description = description.trim() || null;
+    if (password !== undefined) {
+      updates.password = password.trim() ? hashPassword(password) : null;
+    }
 
     const [updated] = await db
       .update(bookClubsTable)
       .set(updates)
       .where(eq(bookClubsTable.id, id))
       .returning();
-    return res.json(updated);
+    return res.json(formatClub(updated));
   } catch (err) {
     return res.status(500).json({ error: "Failed to update club" });
   }
