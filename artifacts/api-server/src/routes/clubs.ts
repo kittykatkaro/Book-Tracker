@@ -144,10 +144,11 @@ router.post("/", requireAuth, async (req, res) => {
     };
 
     if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    if (!password?.trim()) return res.status(400).json({ error: "password is required" });
 
     const clubId = generateId();
     const now = new Date();
-    const passwordHash = password?.trim() ? hashPassword(password) : null;
+    const passwordHash = hashPassword(password);
 
     const [club] = await db
       .insert(bookClubsTable)

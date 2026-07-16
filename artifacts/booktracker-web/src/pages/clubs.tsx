@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
 import { customFetch } from "@workspace/api-client-react";
 import { Plus, Users, BookOpen, LogIn, Lock } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -64,12 +65,11 @@ function CreateClubDialog({
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: (data: { name: string; description: string; displayName: string; password?: string }) =>
+    mutationFn: (data: { name: string; description: string; displayName: string; password: string }) =>
       customFetch("/api/clubs", {
         method: "POST",
         body: JSON.stringify(data),
@@ -77,7 +77,7 @@ function CreateClubDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clubs"] });
       toast({ title: "Club created!" });
-      setName(""); setDescription(""); setPassword(""); setPasswordEnabled(false);
+      setName(""); setDescription(""); setPassword("");
       onClose();
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -95,7 +95,7 @@ function CreateClubDialog({
         <DialogHeader>
           <DialogTitle className="font-serif">Start a book club</DialogTitle>
           <DialogDescription>
-            Create a space for your group to read and discuss together.
+            All clubs are invite-only. Share the code and password with members you want to join.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
@@ -118,46 +118,31 @@ function CreateClubDialog({
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-
-          {/* Password toggle */}
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => { setPasswordEnabled(!passwordEnabled); setPassword(""); }}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${passwordEnabled ? "bg-primary border-primary" : "border-input"}`}>
-                {passwordEnabled && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="club-password" className="flex items-center gap-1.5">
               <Lock className="h-3.5 w-3.5" />
-              Password-protect this club
-            </button>
-
-            {passwordEnabled && (
-              <div className="space-y-1.5">
-                <Label htmlFor="club-password">Club password</Label>
-                <div className="relative">
-                  <Input
-                    id="club-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Members will need this to join"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
-                  >
-                    {showPassword ? "Hide" : "Show"}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Share this password with people you invite — they'll need it along with the invite code.
-                </p>
-              </div>
-            )}
+              Club password
+            </Label>
+            <div className="relative">
+              <Input
+                id="club-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Members will need this to join"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Share this with invited members along with the invite code.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
@@ -165,10 +150,8 @@ function CreateClubDialog({
               Cancel
             </Button>
             <Button
-              onClick={() =>
-                mutation.mutate({ name, description, displayName, password: passwordEnabled ? password : undefined })
-              }
-              disabled={!name.trim() || (passwordEnabled && !password.trim()) || mutation.isPending}
+              onClick={() => mutation.mutate({ name, description, displayName, password })}
+              disabled={!name.trim() || !password.trim() || mutation.isPending}
             >
               {mutation.isPending ? "Creating…" : "Create club"}
             </Button>
@@ -224,7 +207,7 @@ function JoinClubDialog({
         <DialogHeader>
           <DialogTitle className="font-serif">Join a book club</DialogTitle>
           <DialogDescription>
-            Enter the invite code and password (if required) shared by a club member.
+            Enter the invite code and password shared by a club member.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
@@ -241,13 +224,13 @@ function JoinClubDialog({
           <div className="space-y-1.5">
             <Label htmlFor="join-password" className="flex items-center gap-1.5">
               <Lock className="h-3.5 w-3.5" />
-              Password <span className="text-muted-foreground font-normal">(if required)</span>
+              Password
             </Label>
             <div className="relative">
               <Input
                 id="join-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Leave blank if no password"
+                placeholder="Enter the club password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pr-10"
@@ -266,8 +249,8 @@ function JoinClubDialog({
               Cancel
             </Button>
             <Button
-              onClick={() => mutation.mutate({ inviteCode: code, displayName, password: password || undefined })}
-              disabled={!code.trim() || mutation.isPending}
+              onClick={() => mutation.mutate({ inviteCode: code, displayName, password })}
+              disabled={!code.trim() || !password.trim() || mutation.isPending}
             >
               {mutation.isPending ? "Joining…" : "Join club"}
             </Button>
@@ -291,18 +274,11 @@ function ClubCard({ club }: { club: ClubSummary }) {
             <h3 className="font-serif font-bold text-lg leading-tight line-clamp-2">
               {club.name}
             </h3>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {club.hasPassword && (
-                <span title="Password protected">
-                  <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                </span>
-              )}
-              {club.myRole === "owner" && (
-                <Badge variant="secondary" className="text-xs">
-                  Owner
-                </Badge>
-              )}
-            </div>
+            {club.myRole === "owner" && (
+              <Badge variant="secondary" className="text-xs shrink-0">
+                Owner
+              </Badge>
+            )}
           </div>
 
           {club.description && (

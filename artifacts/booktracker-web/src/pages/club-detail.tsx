@@ -565,15 +565,6 @@ export function ClubDetail() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-serif text-3xl font-bold">{club.name}</h1>
-                {club.hasPassword && (
-                  <span
-                    title="Password protected"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-secondary rounded-full px-2 py-0.5"
-                  >
-                    <Lock className="h-3 w-3" />
-                    Private
-                  </span>
-                )}
                 {club.myRole === "owner" && (
                   <Badge variant="secondary">Owner</Badge>
                 )}
