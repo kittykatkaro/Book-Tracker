@@ -31,24 +31,28 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 // Multer — in-memory, 5 MB cap
 // ---------------------------------------------------------------------------
 
+const ALLOWED_EXTS = new Set(["csv", "pdf", "docx", "doc", "txt"]);
+const ALLOWED_MIMES = new Set([
+  "text/csv",
+  "application/csv",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "text/plain",
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter(_req, file, cb) {
-    const allowed = [
-      "text/csv", "application/csv",
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/msword",
-      "text/plain",
-      "application/octet-stream", // mobile pickers often send this
-    ];
-    // Also allow by extension for permissive MIME types
-    const ext = (file.originalname || "").split(".").pop()?.toLowerCase();
-    if (allowed.includes(file.mimetype) || ["csv", "pdf", "docx", "doc", "txt"].includes(ext ?? "")) {
+    const ext = (file.originalname || "").split(".").pop()?.toLowerCase() ?? "";
+    // Accept when MIME is a known book-file type, OR when the extension is
+    // explicitly supported (covers "application/octet-stream" from mobile
+    // pickers and other generic MIME types sent for valid file types).
+    if (ALLOWED_MIMES.has(file.mimetype) || ALLOWED_EXTS.has(ext)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`));
+      cb(new Error("Unsupported file type. Please upload a CSV, PDF, or DOCX file."));
     }
   },
 });

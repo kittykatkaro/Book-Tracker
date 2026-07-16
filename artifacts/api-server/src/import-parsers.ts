@@ -217,10 +217,14 @@ export function parseCSV(buffer: Buffer): ParsedBook[] {
         headers.findIndex((h) => /^(author|writer|author[\s_]?name)$/.test(h));
 
       if (titleIdx < 0 || authorIdx < 0) {
-        // No header match — try first two columns as title/author
+        // No recognised header — try first two columns as title/author, but
+        // only when the values actually look like book metadata.  This prevents
+        // non-book CSVs (expense reports, inventories, etc.) from silently
+        // producing garbage book entries.
         const title = cols[0]?.trim();
         const author = cols[1]?.trim();
         if (!title || !author) continue;
+        if (!isLikelyTitle(title) || !isLikelyAuthor(author)) continue;
         const key = `${title.toLowerCase()}|${author.toLowerCase()}`;
         if (seen.has(key)) continue;
         seen.add(key);
