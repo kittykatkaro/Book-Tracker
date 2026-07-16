@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -17,10 +17,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
+import { initI18n } from '@/i18n';
 
 SplashScreen.preventAutoHideAsync();
 
-// Point the API client at the shared backend
 const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (apiDomain) {
   setBaseUrl(`https://${apiDomain}/api`);
@@ -29,7 +29,7 @@ if (apiDomain) {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 30, // 30 seconds
+      staleTime: 1000 * 30,
       retry: 2,
     },
   },
@@ -38,23 +38,17 @@ const queryClient = new QueryClient({
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
-// ---------------------------------------------------------------------------
-// Auth routing — redirects between (auth) and (tabs) based on sign-in state
-// ---------------------------------------------------------------------------
-
 function InitialLayout() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
-  // Attach the Clerk bearer token to every API request (mobile only)
   useEffect(() => {
     if (isSignedIn) {
       setAuthTokenGetter(() => getToken());
     }
   }, [isSignedIn, getToken]);
 
-  // Route guard
   useEffect(() => {
     if (!isLoaded) return;
     const inAuthGroup = segments[0] === '(auth)';
@@ -76,10 +70,6 @@ function InitialLayout() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Root layout
-// ---------------------------------------------------------------------------
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -87,6 +77,11 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [i18nReady, setI18nReady] = useState(false);
+
+  useEffect(() => {
+    initI18n().then(() => setI18nReady(true));
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -94,14 +89,10 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !i18nReady) return null;
 
   return (
-    <ClerkProvider
-      publishableKey={publishableKey}
-      tokenCache={tokenCache}
-      proxyUrl={proxyUrl}
-    >
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
       <ClerkLoaded>
         <SafeAreaProvider>
           <ErrorBoundary>

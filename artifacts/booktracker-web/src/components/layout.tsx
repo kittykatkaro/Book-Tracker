@@ -1,13 +1,30 @@
 import { Link, useLocation } from "wouter";
 import { Library, BarChart2, Plus, LogOut, User, Users } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
+import { useTranslation } from "react-i18next";
+import { setLanguage } from "@/i18n";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function LangToggle() {
+  const { i18n } = useTranslation();
+  const current = i18n.language.startsWith("de") ? "de" : "en";
+  return (
+    <button
+      onClick={() => setLanguage(current === "de" ? "en" : "de")}
+      className="text-xs font-mono font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-border/50 hover:border-border"
+      title={current === "de" ? "Switch to English" : "Auf Deutsch wechseln"}
+    >
+      {current === "de" ? "EN" : "DE"}
+    </button>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { t } = useTranslation();
 
   const displayName =
     user?.firstName ||
@@ -34,33 +51,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 className={`transition-colors ${location === "/" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 data-testid="link-nav-library"
               >
-                Books
+                {t("nav.books")}
               </Link>
               <Link
                 href="/clubs"
                 className={`transition-colors ${location.startsWith("/clubs") ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 data-testid="link-nav-clubs"
               >
-                Clubs
+                {t("nav.clubs")}
               </Link>
               <Link
                 href="/stats"
                 className={`transition-colors ${location === "/stats" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 data-testid="link-nav-stats"
               >
-                Stats
+                {t("nav.stats")}
               </Link>
             </nav>
           </div>
 
           <div className="flex items-center gap-3">
+            <LangToggle />
+
             <Link
               href="/add"
               className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
               data-testid="link-nav-add-book"
             >
               <Plus className="h-4 w-4 md:mr-1.5" />
-              <span className="hidden md:inline">Add Book</span>
+              <span className="hidden md:inline">{t("nav.addBook")}</span>
             </Link>
 
             {/* User menu */}
@@ -73,10 +92,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => signOut({ redirectUrl: basePath || "/" })}
                 className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary"
                 data-testid="button-sign-out"
-                title="Sign out"
+                title={t("nav.signOut")}
               >
                 <LogOut className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline">Sign out</span>
+                <span className="hidden lg:inline">{t("nav.signOut")}</span>
               </button>
             </div>
           </div>
@@ -95,7 +114,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           data-testid="link-mobile-library"
         >
           <Library className="h-5 w-5" />
-          <span>Books</span>
+          <span>{t("nav.books")}</span>
         </Link>
         <Link
           href="/clubs"
@@ -103,7 +122,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           data-testid="link-mobile-clubs"
         >
           <Users className="h-5 w-5" />
-          <span>Clubs</span>
+          <span>{t("nav.clubs")}</span>
         </Link>
         <Link
           href="/stats"
@@ -111,7 +130,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           data-testid="link-mobile-stats"
         >
           <BarChart2 className="h-5 w-5" />
-          <span>Stats</span>
+          <span>{t("nav.stats")}</span>
         </Link>
         <button
           onClick={() => signOut({ redirectUrl: basePath || "/" })}
@@ -119,7 +138,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           data-testid="button-mobile-sign-out"
         >
           <LogOut className="h-5 w-5" />
-          <span>Sign out</span>
+          <span>{t("nav.signOut")}</span>
         </button>
       </div>
     </div>

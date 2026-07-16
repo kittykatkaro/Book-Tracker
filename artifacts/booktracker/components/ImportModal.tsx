@@ -24,6 +24,7 @@ import { getListBooksQueryKey } from '@workspace/api-client-react';
 import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useTranslation } from 'react-i18next';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,12 +52,6 @@ interface SelectableBook extends ParsedBook {
 const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
 const API_BASE = apiDomain ? `https://${apiDomain}/api` : '/api';
 
-function statusLabel(s: ParsedBook['status']) {
-  if (s === 'read') return 'Read';
-  if (s === 'reading') return 'Reading';
-  return 'Want to Read';
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -72,6 +67,7 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
   const colors = useColors();
   const { getToken } = useAuth();
   const qc = useQueryClient();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState<Step>('idle');
   const [books, setBooks] = useState<SelectableBook[]>([]);
@@ -97,7 +93,7 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/msword',
           'text/plain',
-          '*/*', // fallback for pickers that don't filter by MIME
+          '*/*',
         ],
         copyToCacheDirectory: true,
       });
@@ -108,7 +104,7 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
       if (!asset) return;
 
       if (asset.size && asset.size > 5 * 1024 * 1024) {
-        setError('File is too large. Maximum size is 5 MB.');
+        setError(t('import.errorTooBig'));
         return;
       }
 
@@ -129,10 +125,10 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Parse failed');
+      if (!res.ok) throw new Error(data.error ?? t('import.errorParse'));
 
       if (!data.books || data.books.length === 0) {
-        setError('No books detected. Try a CSV with Title/Author columns, or a Goodreads export.');
+        setError(t('import.errorNoBooks'));
         setStep('idle');
         return;
       }
@@ -140,10 +136,10 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
       setBooks(data.books.map((b: ParsedBook) => ({ ...b, selected: true })));
       setStep('preview');
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to process file');
+      setError(err?.message ?? t('import.errorProcess'));
       setStep('idle');
     }
-  }, [getToken]);
+  }, [getToken, t]);
 
   // ---- Selection ----
   const toggleAll = (val: boolean) =>
@@ -169,17 +165,17 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
         body: JSON.stringify({ books: selected }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Import failed');
+      if (!res.ok) throw new Error(data.error ?? t('import.errorImport'));
 
       await qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
 
       const msg = data.skipped
-        ? `${data.imported} added, ${data.skipped} skipped (already in library)`
-        : `${data.imported} book${data.imported !== 1 ? 's' : ''} added to your library`;
+        ? t('import.resultSkipped', { imported: data.imported, skipped: data.skipped })
+        : t('import.resultAdded', { count: data.imported });
 
-      Alert.alert('Import complete', msg, [{ text: 'OK', onPress: handleClose }]);
+      Alert.alert(t('import.complete'), msg, [{ text: 'OK', onPress: handleClose }]);
     } catch (err: any) {
-      Alert.alert('Import failed', err?.message ?? 'Something went wrong');
+      Alert.alert(t('import.failed'), err?.message ?? t('import.errorSomething'));
       setStep('preview');
     }
   };
@@ -187,6 +183,12 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
   // ---------------------------------------------------------------------------
   // Render helpers
   // ---------------------------------------------------------------------------
+
+  const statusLabel = (s: ParsedBook['status']) => {
+    if (s === 'read') return t('import.statusRead');
+    if (s === 'reading') return t('import.statusReading');
+    return t('import.statusWantToRead');
+  };
 
   const renderBook = ({ item, index }: { item: SelectableBook; index: number }) => (
     <TouchableOpacity
@@ -237,10 +239,10 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.foreground }]}>
             {step === 'preview'
-              ? `${books.length} book${books.length !== 1 ? 's' : ''} detected`
+              ? t('import.detectedBooks', { count: books.length })
               : step === 'importing'
-              ? 'Importing…'
-              : 'Import your library'}
+              ? t('import.importing')
+              : t('import.title')}
           </Text>
           <Pressable onPress={handleClose} style={styles.closeBtn}>
             <Feather name="x" size={20} color={colors.mutedForeground} />
@@ -263,7 +265,7 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
                 <Feather name="upload" size={20} color={colors.primaryForeground} />
               )}
               <Text style={[styles.pickBtnText, { color: colors.primaryForeground }]}>
-                {step === 'picking' ? 'Parsing file…' : 'Choose a file'}
+                {step === 'picking' ? t('import.parsing') : t('import.chooseFile')}
               </Text>
             </TouchableOpacity>
 
@@ -276,11 +278,11 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
 
             {/* Format guide */}
             <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Supported formats</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('import.supportedFormats')}</Text>
               {[
-                { label: 'Goodreads CSV', desc: 'Full data — rating, pages, shelf, read date', highlight: true },
-                { label: 'Any CSV', desc: 'Columns named Title + Author (+ optional Status, Pages)' },
-                { label: 'PDF / DOCX', desc: 'Reading lists as "Title – Author" or "Title by Author"' },
+                { label: t('import.formatGoodreads'), desc: t('import.formatGoodreadsDesc'), highlight: true },
+                { label: t('import.formatCsv'), desc: t('import.formatCsvDesc') },
+                { label: t('import.formatDoc'), desc: t('import.formatDocDesc') },
               ].map((f) => (
                 <View key={f.label} style={styles.formatRow}>
                   <View style={styles.formatDot}>
@@ -289,7 +291,7 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
                   <View style={styles.formatText}>
                     <Text style={[styles.formatLabel, { color: colors.foreground }]}>
                       {f.label}
-                      {f.highlight ? '  ★ Best for Kindle' : ''}
+                      {f.highlight ? `  ${t('import.bestForKindle')}` : ''}
                     </Text>
                     <Text style={[styles.formatDesc, { color: colors.mutedForeground }]}>{f.desc}</Text>
                   </View>
@@ -299,15 +301,15 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
 
             {/* Kindle instructions */}
             <View style={[styles.section, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
-              <Text style={[styles.sectionTitle, { color: '#92400E' }]}>📚 Importing from Kindle</Text>
+              <Text style={[styles.sectionTitle, { color: '#92400E' }]}>📚 {t('import.kindleTitle')}</Text>
               <Text style={[styles.kindleText, { color: '#78350F' }]}>
-                Amazon has no public Kindle API. The easiest path is via Goodreads, which syncs your Kindle history:
+                {t('import.kindleDesc')}
               </Text>
               <Text style={[styles.kindleSteps, { color: '#78350F' }]}>
-                1. Sign in to goodreads.com{'\n'}
-                2. My Books → Tools → Import and Export{'\n'}
-                3. Tap Export Library — saves a CSV{'\n'}
-                4. Upload that file here
+                {t('import.kindleStep1')}{'\n'}
+                {t('import.kindleStep2')}{'\n'}
+                {t('import.kindleStep3')}{'\n'}
+                {t('import.kindleStep4')}
               </Text>
             </View>
           </ScrollView>
@@ -320,14 +322,14 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
             <View style={[styles.toolbar, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
               <View style={styles.toolbarLeft}>
                 <TouchableOpacity onPress={() => toggleAll(true)} style={styles.toolbarBtn}>
-                  <Text style={[styles.toolbarLink, { color: colors.primary }]}>All</Text>
+                  <Text style={[styles.toolbarLink, { color: colors.primary }]}>{t('import.all')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => toggleAll(false)} style={styles.toolbarBtn}>
-                  <Text style={[styles.toolbarLink, { color: colors.mutedForeground }]}>None</Text>
+                  <Text style={[styles.toolbarLink, { color: colors.mutedForeground }]}>{t('import.none')}</Text>
                 </TouchableOpacity>
               </View>
               <Text style={[styles.selectedCount, { color: colors.mutedForeground }]}>
-                {selectedCount} of {books.length} selected
+                {t('import.selectedOf', { selected: selectedCount, total: books.length })}
               </Text>
             </View>
 
@@ -342,18 +344,22 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
             <View style={[styles.confirmBar, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
               <TouchableOpacity onPress={() => setStep('idle')} style={styles.backBtn}>
                 <Feather name="arrow-left" size={16} color={colors.mutedForeground} />
-                <Text style={[styles.backText, { color: colors.mutedForeground }]}>Back</Text>
+                <Text style={[styles.backText, { color: colors.mutedForeground }]}>{t('import.back')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={confirm}
                 disabled={selectedCount === 0}
-                style={[styles.confirmBtn, { backgroundColor: selectedCount === 0 ? colors.muted : colors.primary }]}
+                style={[
+                  styles.confirmBtn,
+                  {
+                    backgroundColor: selectedCount > 0 ? colors.primary : colors.secondary,
+                  },
+                ]}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.confirmText, { color: colors.primaryForeground }]}>
-                  Import {selectedCount} book{selectedCount !== 1 ? 's' : ''}
+                <Text style={[styles.confirmBtnText, { color: selectedCount > 0 ? colors.primaryForeground : colors.mutedForeground }]}>
+                  {t('import.importCount', { count: selectedCount })}
                 </Text>
-                <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
               </TouchableOpacity>
             </View>
           </>
@@ -361,10 +367,10 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
 
         {/* ---- Importing step ---- */}
         {step === 'importing' && (
-          <View style={styles.loadingCenter}>
+          <View style={styles.importingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-              Adding {selectedCount} book{selectedCount !== 1 ? 's' : ''} to your library…
+            <Text style={[styles.importingText, { color: colors.mutedForeground }]}>
+              {t('import.addingCount', { count: selectedCount })}
             </Text>
           </View>
         )}
@@ -372,10 +378,6 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
     </Modal>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -387,16 +389,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  title: { fontSize: 18, fontFamily: 'Inter_600SemiBold', flex: 1 },
   closeBtn: { padding: 4 },
   scroll: { flex: 1 },
-  idleContent: { padding: 20, gap: 16 },
+  idleContent: { paddingHorizontal: 20, paddingVertical: 20, gap: 16 },
   pickBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    padding: 16,
+    paddingVertical: 16,
     borderRadius: 14,
   },
   pickBtnText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
@@ -408,22 +410,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  errorText: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 18 },
-  section: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
-  sectionTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  formatRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  errorText: { fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1 },
+  section: { borderRadius: 12, borderWidth: 1, padding: 16, gap: 12 },
+  sectionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
+  formatRow: { flexDirection: 'row', gap: 12 },
   formatDot: { paddingTop: 5 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  formatText: { flex: 1 },
-  formatLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  formatDesc: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  kindleText: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19 },
-  kindleSteps: { fontSize: 13, fontFamily: 'Inter_500Medium', lineHeight: 22 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  formatText: { flex: 1, gap: 2 },
+  formatLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  formatDesc: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  kindleText: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20 },
+  kindleSteps: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 22 },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,7 +430,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   toolbarLeft: { flexDirection: 'row', gap: 16 },
-  toolbarBtn: { padding: 4 },
+  toolbarBtn: { paddingVertical: 4 },
   toolbarLink: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   selectedCount: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   bookRow: {
@@ -447,33 +444,27 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 5,
-    borderWidth: 2,
+    borderRadius: 6,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  bookInfo: { flex: 1 },
-  bookTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  bookAuthor: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  bookInfo: { flex: 1, gap: 3 },
+  bookTitle: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  bookAuthor: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   confirmBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderTopWidth: 1,
   },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 },
-  backText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
-  confirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  confirmText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  loadingText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  backText: { fontSize: 15, fontFamily: 'Inter_500Medium' },
+  confirmBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  confirmBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  importingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  importingText: { fontSize: 15, fontFamily: 'Inter_400Regular' },
 });

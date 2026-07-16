@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import { Library, BookOpen, CheckCircle2, Star, TrendingUp } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 export function Stats() {
+  const { t } = useTranslation()
   const { data: stats, isLoading } = useGetBookStats()
 
   if (isLoading || !stats) {
@@ -25,8 +27,8 @@ export function Stats() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div>
-        <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">Reading Stats</h1>
-        <p className="text-muted-foreground mt-1 text-lg">Your reading habits by the numbers.</p>
+        <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{t("stats.title")}</h1>
+        <p className="text-muted-foreground mt-1 text-lg">{t("stats.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
@@ -34,7 +36,7 @@ export function Stats() {
           <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full">
             <Library className="h-6 w-6 text-primary mb-3" />
             <div className="text-4xl font-serif font-bold text-primary" data-testid="stat-total">{stats.total}</div>
-            <p className="text-sm font-medium text-primary/80 mt-1">Total Books</p>
+            <p className="text-sm font-medium text-primary/80 mt-1">{t("stats.totalBooks")}</p>
           </CardContent>
         </Card>
         
@@ -42,7 +44,7 @@ export function Stats() {
           <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full">
             <BookOpen className="h-6 w-6 text-accent mb-3" />
             <div className="text-4xl font-serif font-bold text-accent" data-testid="stat-reading">{stats.reading}</div>
-            <p className="text-sm font-medium text-accent/80 mt-1">Reading</p>
+            <p className="text-sm font-medium text-accent/80 mt-1">{t("stats.reading")}</p>
           </CardContent>
         </Card>
 
@@ -50,7 +52,7 @@ export function Stats() {
           <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full">
             <CheckCircle2 className="h-6 w-6 text-muted-foreground mb-3" />
             <div className="text-4xl font-serif font-bold" data-testid="stat-finished">{stats.read}</div>
-            <p className="text-sm font-medium text-muted-foreground mt-1">Finished</p>
+            <p className="text-sm font-medium text-muted-foreground mt-1">{t("stats.finished")}</p>
           </CardContent>
         </Card>
 
@@ -58,7 +60,7 @@ export function Stats() {
           <CardContent className="p-6 flex flex-col items-center justify-center text-center h-full">
             <Library className="h-6 w-6 text-muted-foreground mb-3" />
             <div className="text-4xl font-serif font-bold" data-testid="stat-want-to-read">{stats.wantToRead}</div>
-            <p className="text-sm font-medium text-muted-foreground mt-1">To Read</p>
+            <p className="text-sm font-medium text-muted-foreground mt-1">{t("stats.toRead")}</p>
           </CardContent>
         </Card>
 
@@ -68,7 +70,7 @@ export function Stats() {
             <div className="text-4xl font-serif font-bold text-amber-600 dark:text-amber-400" data-testid="stat-avg-rating">
               {stats.avgRating ? stats.avgRating.toFixed(1) : '-'}
             </div>
-            <p className="text-sm font-medium text-amber-600/80 dark:text-amber-400/80 mt-1">Avg Rating</p>
+            <p className="text-sm font-medium text-amber-600/80 dark:text-amber-400/80 mt-1">{t("stats.avgRating")}</p>
           </CardContent>
         </Card>
       </div>
@@ -78,20 +80,20 @@ export function Stats() {
           <CardHeader>
             <CardTitle className="font-serif text-xl flex items-center">
               <TrendingUp className="h-5 w-5 mr-2 text-primary" />
-              This Year
+              {t("stats.thisYear")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex justify-between items-end border-b border-border/50 pb-4">
-              <span className="text-muted-foreground">Books Read</span>
+              <span className="text-muted-foreground">{t("stats.booksRead")}</span>
               <span className="text-3xl font-serif font-bold">{stats.readThisYear}</span>
             </div>
             <div className="flex justify-between items-end border-b border-border/50 pb-4">
-              <span className="text-muted-foreground">Pages Read</span>
+              <span className="text-muted-foreground">{t("stats.pagesRead")}</span>
               <span className="text-3xl font-serif font-bold">{stats.totalPages.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-end">
-              <span className="text-muted-foreground">To Read List</span>
+              <span className="text-muted-foreground">{t("stats.toReadList")}</span>
               <span className="text-3xl font-serif font-bold text-muted-foreground">{stats.wantToRead}</span>
             </div>
           </CardContent>
@@ -99,7 +101,7 @@ export function Stats() {
 
         <Card className="md:col-span-2 border-border/50 bg-white/50 dark:bg-black/20">
           <CardHeader>
-            <CardTitle className="font-serif text-xl">Top Genres</CardTitle>
+            <CardTitle className="font-serif text-xl">{t("stats.topGenres")}</CardTitle>
           </CardHeader>
           <CardContent>
             {stats.topGenres && stats.topGenres.length > 0 ? (
@@ -118,7 +120,7 @@ export function Stats() {
                     <Tooltip 
                       cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                       contentStyle={{ borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)' }}
-                      formatter={(value) => [`${value} books`, 'Count']}
+                      formatter={(value) => [`${value} ${t("stats.booksRead").toLowerCase()}`, t("stats.count")]}
                     />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={24}>
                       {stats.topGenres.map((entry, index) => (
@@ -130,7 +132,7 @@ export function Stats() {
               </div>
             ) : (
               <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-                Not enough data yet. Add some genres to your books!
+                {t("stats.noGenreData")}
               </div>
             )}
           </CardContent>

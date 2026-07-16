@@ -14,12 +14,14 @@ import { Link, useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { useTranslation } from 'react-i18next';
 
 export default function SignInScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signIn, errors, fetchStatus } = useSignIn();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,14 +37,13 @@ export default function SignInScreen() {
       password,
     });
 
-    if (error) return; // errors rendered below
+    if (error) return;
 
     if (signIn.status === 'complete') {
       await signIn.finalize({
         navigate: ({ decorateUrl }) => {
           const url = decorateUrl('/');
           if (url.startsWith('http')) {
-            // Expo web
             window.location.href = url;
           } else {
             router.replace('/(tabs)' as any);
@@ -64,26 +65,24 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={s.header}>
           <View style={[s.logoBox, { backgroundColor: colors.primary + '18' }]}>
             <Text style={[s.logoEmoji]}>📚</Text>
           </View>
-          <Text style={[s.title, { color: colors.foreground }]}>Welcome back</Text>
+          <Text style={[s.title, { color: colors.foreground }]}>{t('auth.signInTitle')}</Text>
           <Text style={[s.subtitle, { color: colors.mutedForeground }]}>
-            Sign in to your reading journal
+            {t('auth.signInSubtitle')}
           </Text>
         </View>
 
-        {/* Form */}
         <View style={s.form}>
           <View style={s.field}>
-            <Text style={[s.label, { color: colors.mutedForeground }]}>EMAIL</Text>
+            <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.emailLabel')}</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground }]}
               value={email}
               onChangeText={setEmail}
-              placeholder="your@email.com"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -96,12 +95,12 @@ export default function SignInScreen() {
           </View>
 
           <View style={s.field}>
-            <Text style={[s.label, { color: colors.mutedForeground }]}>PASSWORD</Text>
+            <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.passwordLabel')}</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder={t('auth.passwordPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               secureTextEntry
               autoComplete="password"
@@ -113,7 +112,6 @@ export default function SignInScreen() {
             )}
           </View>
 
-          {/* Global error */}
           {errors?.global && (
             <View style={[s.errorBox, { backgroundColor: '#E55A4E18', borderColor: '#E55A4E40' }]}>
               <Text style={[s.errorBoxText, { color: '#E55A4E' }]}>{errors.global.message}</Text>
@@ -121,10 +119,7 @@ export default function SignInScreen() {
           )}
 
           <Pressable
-            style={[
-              s.submitBtn,
-              { backgroundColor: canSubmit ? colors.primary : colors.muted },
-            ]}
+            style={[s.submitBtn, { backgroundColor: canSubmit ? colors.primary : colors.muted }]}
             onPress={handleSubmit}
             disabled={!canSubmit}
             data-testid="button-sign-in"
@@ -133,18 +128,18 @@ export default function SignInScreen() {
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={[s.submitBtnText, { color: colors.primaryForeground }]}>
-                Sign in
+                {t('auth.signIn')}
               </Text>
             )}
           </Pressable>
 
           <View style={s.footer}>
             <Text style={[s.footerText, { color: colors.mutedForeground }]}>
-              Don't have an account?{' '}
+              {t('auth.noAccount')}{' '}
             </Text>
             <Link href="/(auth)/sign-up" asChild>
               <Pressable>
-                <Text style={[s.footerLink, { color: colors.primary }]}>Sign up</Text>
+                <Text style={[s.footerLink, { color: colors.primary }]}>{t('auth.signUp')}</Text>
               </Pressable>
             </Link>
           </View>

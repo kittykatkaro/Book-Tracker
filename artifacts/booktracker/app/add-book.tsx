@@ -19,22 +19,18 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { lookupBookByIsbn } from '@workspace/api-client-react';
+import { useTranslation } from 'react-i18next';
 
 const GENRES = [
   'Fiction', 'Non-Fiction', 'Mystery', 'Fantasy', 'Sci-Fi',
   'Biography', 'History', 'Self-Help', 'Romance', 'Thriller', 'Other',
 ];
 
-const STATUS_OPTIONS: { value: BookStatus; label: string; icon: string }[] = [
-  { value: 'want_to_read', label: 'Want to Read', icon: 'bookmark' },
-  { value: 'reading', label: 'Reading', icon: 'book-open' },
-  { value: 'read', label: 'Read', icon: 'check-circle' },
-];
-
 export default function AddBookScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addBook } = useBooks();
+  const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [title, setTitle] = useState('');
@@ -43,12 +39,17 @@ export default function AddBookScreen() {
   const [genre, setGenre] = useState('');
   const [pages, setPages] = useState('');
 
-  // ISBN state
   const [isbn, setIsbn] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResult, setLookupResult] = useState<'success' | 'error' | null>(null);
   const [scanning, setScanning] = useState(false);
   const scannedRef = useRef(false);
+
+  const STATUS_OPTIONS: { value: BookStatus; label: string; icon: string }[] = [
+    { value: 'want_to_read', label: t('addBook.statusWantToRead'), icon: 'bookmark' },
+    { value: 'reading', label: t('addBook.statusReading'), icon: 'book-open' },
+    { value: 'read', label: t('addBook.statusRead'), icon: 'check-circle' },
+  ];
 
   const canSubmit = title.trim().length > 0 && author.trim().length > 0;
 
@@ -118,7 +119,7 @@ export default function AddBookScreen() {
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <Feather name="x" size={22} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Add Book</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('addBook.title')}</Text>
         <Pressable
           onPress={handleSubmit}
           disabled={!canSubmit}
@@ -133,7 +134,7 @@ export default function AddBookScreen() {
               { color: canSubmit ? colors.primaryForeground : colors.mutedForeground },
             ]}
           >
-            Save
+            {t('addBook.save')}
           </Text>
         </Pressable>
       </View>
@@ -148,20 +149,15 @@ export default function AddBookScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* ISBN Lookup */}
-          <View
-            style={[
-              styles.isbnCard,
-              { backgroundColor: colors.secondary, borderColor: colors.border },
-            ]}
-          >
+          <View style={[styles.isbnCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-              ISBN LOOKUP
+              {t('addBook.isbnLabel')}
             </Text>
             <View style={styles.isbnRow}>
               <TextInput
                 value={isbn}
                 onChangeText={(v) => { setIsbn(v); setLookupResult(null); }}
-                placeholder="9780140449136"
+                placeholder={t('addBook.isbnPlaceholder')}
                 placeholderTextColor={colors.mutedForeground}
                 keyboardType="numeric"
                 style={[
@@ -197,28 +193,28 @@ export default function AddBookScreen() {
             </View>
             {lookupResult === 'success' && (
               <Text style={[styles.lookupMsg, { color: colors.primary }]}>
-                ✓ Book details filled in — review and save.
+                {t('addBook.isbnSuccess')}
               </Text>
             )}
             {lookupResult === 'error' && (
               <Text style={[styles.lookupMsg, { color: '#E55A4E' }]}>
-                Book not found for this ISBN. Enter details manually.
+                {t('addBook.isbnError')}
               </Text>
             )}
             {!lookupResult && (
               <Text style={[styles.lookupHint, { color: colors.mutedForeground }]}>
-                Tap the camera icon to scan the barcode, or type an ISBN and tap search.
+                {t('addBook.isbnHint')}
               </Text>
             )}
           </View>
 
           {/* Title */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>TITLE *</Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{t('addBook.titleLabel')}</Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
-              placeholder="Book title"
+              placeholder={t('addBook.titlePlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               style={[
                 styles.input,
@@ -230,11 +226,11 @@ export default function AddBookScreen() {
 
           {/* Author */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>AUTHOR *</Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{t('addBook.authorLabel')}</Text>
             <TextInput
               value={author}
               onChangeText={setAuthor}
-              placeholder="Author name"
+              placeholder={t('addBook.authorPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               style={[
                 styles.input,
@@ -246,11 +242,11 @@ export default function AddBookScreen() {
 
           {/* Pages */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>PAGES</Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{t('addBook.pagesLabel')}</Text>
             <TextInput
               value={pages}
               onChangeText={setPages}
-              placeholder="Total pages"
+              placeholder={t('addBook.pagesPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               keyboardType="number-pad"
               style={[
@@ -262,7 +258,7 @@ export default function AddBookScreen() {
 
           {/* Status */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>STATUS</Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{t('addBook.statusLabel')}</Text>
             <View style={styles.statusRow}>
               {STATUS_OPTIONS.map((opt) => {
                 const active = status === opt.value;
@@ -299,8 +295,8 @@ export default function AddBookScreen() {
 
           {/* Genre */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>GENRE</Text>
-            <View style={styles.genreGrid}>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{t('addBook.genreLabel')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
               {GENRES.map((g) => {
                 const active = genre === g;
                 return (
@@ -308,17 +304,17 @@ export default function AddBookScreen() {
                     key={g}
                     onPress={() => setGenre(active ? '' : g)}
                     style={[
-                      styles.genreChip,
+                      styles.genreBtn,
                       {
                         borderColor: active ? colors.primary : colors.border,
-                        backgroundColor: active ? colors.primary + '18' : colors.secondary,
+                        backgroundColor: active ? colors.primary + '15' : colors.secondary,
                       },
                     ]}
                   >
                     <Text
                       style={[
-                        styles.genreChipText,
-                        { color: active ? colors.primary : colors.foreground },
+                        styles.genreText,
+                        { color: active ? colors.primary : colors.mutedForeground },
                       ]}
                     >
                       {g}
@@ -326,50 +322,29 @@ export default function AddBookScreen() {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Camera Scanner Modal */}
-      <Modal
-        visible={scanning}
-        animationType="slide"
-        onRequestClose={() => setScanning(false)}
-      >
-        <View style={[styles.scannerContainer, { backgroundColor: '#000' }]}>
+      {/* Barcode scanner modal */}
+      <Modal visible={scanning} animationType="slide" onRequestClose={() => setScanning(false)}>
+        <View style={[styles.scanContainer, { backgroundColor: colors.background }]}>
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_e'] }}
+            barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
             onBarcodeScanned={handleBarcodeScan}
           />
-
-          {/* Viewfinder overlay */}
-          <View style={styles.scannerOverlay} pointerEvents="none">
-            <View style={styles.viewfinder}>
-              <View style={[styles.corner, styles.cornerTL, { borderColor: colors.primary }]} />
-              <View style={[styles.corner, styles.cornerTR, { borderColor: colors.primary }]} />
-              <View style={[styles.corner, styles.cornerBL, { borderColor: colors.primary }]} />
-              <View style={[styles.corner, styles.cornerBR, { borderColor: colors.primary }]} />
-            </View>
+          <View style={styles.scanOverlay}>
+            <View style={[styles.scanFrame, { borderColor: colors.primary }]} />
           </View>
-
-          {/* Top bar */}
-          <View style={[styles.scannerHeader, { paddingTop: insets.top + 12 }]}>
-            <Pressable onPress={() => setScanning(false)} style={styles.scannerClose}>
-              <Feather name="x" size={24} color="#fff" />
-            </Pressable>
-            <Text style={styles.scannerTitle}>Scan ISBN Barcode</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          {/* Bottom hint */}
-          <View style={[styles.scannerFooter, { paddingBottom: insets.bottom + 20 }]}>
-            <Text style={styles.scannerHint}>
-              Point at the barcode on the back cover
-            </Text>
-          </View>
+          <Pressable
+            onPress={() => setScanning(false)}
+            style={[styles.scanClose, { backgroundColor: colors.background }]}
+          >
+            <Feather name="x" size={22} color={colors.foreground} />
+          </Pressable>
         </View>
       </Modal>
     </View>
@@ -382,20 +357,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  closeBtn: { padding: 8 },
   headerTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold' },
+  closeBtn: { padding: 4 },
   saveBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
   saveBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  form: { paddingHorizontal: 16, paddingTop: 8, gap: 20 },
-  field: { gap: 8 },
-  fieldLabel: {
-    fontSize: 11,
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 0.7,
+  form: { paddingHorizontal: 20, paddingTop: 20, gap: 20 },
+  isbnCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  isbnRow: { flexDirection: 'row', gap: 8 },
+  isbnInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
   },
+  isbnBtn: { width: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  lookupMsg: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  lookupHint: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  field: { gap: 8 },
+  fieldLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.7 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
@@ -410,101 +397,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     paddingVertical: 10,
-    paddingHorizontal: 6,
     borderRadius: 10,
     borderWidth: 1,
   },
   statusText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  genreGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  genreChip: {
+  genreBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
   },
-  genreChipText: { fontSize: 13, fontFamily: 'Inter_400Regular' },
-  // ISBN card
-  isbnCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
-  },
-  isbnRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  isbnInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  isbnBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
+  genreText: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  scanContainer: { flex: 1 },
+  scanOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  scanFrame: { width: 250, height: 150, borderWidth: 2, borderRadius: 12 },
+  scanClose: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  lookupMsg: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  lookupHint: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
-  // Scanner
-  scannerContainer: { flex: 1 },
-  scannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewfinder: {
-    width: 260,
-    height: 120,
-    position: 'relative',
-  },
-  corner: {
-    position: 'absolute',
-    width: 24,
-    height: 24,
-    borderWidth: 3,
-  },
-  cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 4 },
-  cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 4 },
-  cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 4 },
-  cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 4 },
-  scannerHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  scannerClose: { width: 40, alignItems: 'flex-start' },
-  scannerTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    textAlign: 'center',
-  },
-  scannerFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingTop: 16,
-  },
-  scannerHint: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 8,
   },
 });

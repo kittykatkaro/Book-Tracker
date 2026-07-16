@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,18 +29,19 @@ import { ArrowLeft, BookPlus, ScanBarcode, Search, Loader2, CheckCircle, AlertCi
 import { Link } from "wouter";
 import { IsbnScannerDialog } from "@/components/isbn-scanner";
 
-const formSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  author: z.string().min(1, "Author is required"),
-  status: z.enum(["reading", "read", "want_to_read"]),
-  pages: z.coerce.number().min(1).optional().or(z.literal("")),
-  genre: z.string().optional(),
-});
-
 export function AddBook() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const createBook = useCreateBook();
+
+  const formSchema = z.object({
+    title: z.string().min(1, t("addBook.titleRequired")),
+    author: z.string().min(1, t("addBook.authorRequired")),
+    status: z.enum(["reading", "read", "want_to_read"]),
+    pages: z.coerce.number().min(1).optional().or(z.literal("")),
+    genre: z.string().optional(),
+  });
 
   const [isbnInput, setIsbnInput] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -110,7 +112,7 @@ export function AddBook() {
         data-testid="link-back-library"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Library
+        {t("addBook.backToLibrary")}
       </Link>
 
       <Card className="border-none shadow-xl shadow-black/5 bg-white/80 dark:bg-black/40 backdrop-blur-sm">
@@ -118,9 +120,9 @@ export function AddBook() {
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <BookPlus className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-serif">Add to Library</CardTitle>
+          <CardTitle className="text-3xl font-serif">{t("addBook.title")}</CardTitle>
           <p className="text-muted-foreground mt-2 font-sans">
-            Document a new book on your reading journey.
+            {t("addBook.subtitle")}
           </p>
         </CardHeader>
 
@@ -129,7 +131,7 @@ export function AddBook() {
           <div className="mb-8 p-4 rounded-xl bg-secondary/50 border border-border/40 space-y-3">
             <p className="text-sm font-medium text-foreground flex items-center gap-2">
               <ScanBarcode className="h-4 w-4 text-primary" />
-              Auto-fill from ISBN
+              {t("addBook.isbnLabel")}
             </p>
             <div className="flex gap-2">
               <Input
@@ -139,7 +141,7 @@ export function AddBook() {
                   setLookupStatus("idle");
                 }}
                 onKeyDown={(e) => e.key === "Enter" && handleLookup(isbnInput)}
-                placeholder="e.g. 9780140449136"
+                placeholder={t("addBook.isbnPlaceholder")}
                 className="font-mono text-sm"
                 data-testid="input-isbn"
               />
@@ -161,7 +163,7 @@ export function AddBook() {
                 variant="outline"
                 onClick={() => setScannerOpen(true)}
                 data-testid="button-scan-isbn"
-                title="Scan barcode with camera"
+                title={t("addBook.scanHint")}
               >
                 <ScanBarcode className="h-4 w-4" />
               </Button>
@@ -169,17 +171,17 @@ export function AddBook() {
 
             {lookupStatus === "success" && (
               <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1" data-testid="text-lookup-success">
-                <CheckCircle className="h-3 w-3" /> Book details filled in — review and save.
+                <CheckCircle className="h-3 w-3" /> {t("addBook.isbnSuccess")}
               </p>
             )}
             {lookupStatus === "error" && (
               <p className="text-xs text-destructive flex items-center gap-1" data-testid="text-lookup-error">
-                <AlertCircle className="h-3 w-3" /> Book not found for this ISBN. Enter details manually.
+                <AlertCircle className="h-3 w-3" /> {t("addBook.isbnError")}
               </p>
             )}
             {lookupStatus === "idle" && (
               <p className="text-xs text-muted-foreground">
-                Enter an ISBN or scan the barcode on the back cover to auto-fill title, author and page count.
+                {t("addBook.isbnHint")}
               </p>
             )}
           </div>
@@ -191,10 +193,10 @@ export function AddBook() {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-serif text-base">Title</FormLabel>
+                    <FormLabel className="font-serif text-base">{t("addBook.fieldTitle")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g. The Secret History"
+                        placeholder={t("addBook.titlePlaceholder")}
                         className="text-lg py-6"
                         data-testid="input-title"
                         {...field}
@@ -209,10 +211,10 @@ export function AddBook() {
                 name="author"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-serif text-base">Author</FormLabel>
+                    <FormLabel className="font-serif text-base">{t("addBook.fieldAuthor")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g. Donna Tartt"
+                        placeholder={t("addBook.authorPlaceholder")}
                         data-testid="input-author"
                         {...field}
                       />
@@ -228,22 +230,22 @@ export function AddBook() {
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-serif text-base">Status</FormLabel>
+                      <FormLabel className="font-serif text-base">{t("addBook.fieldStatus")}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-status">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder={t("addBook.selectStatus")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="want_to_read" data-testid="option-want-to-read">
-                            Want to Read
+                            {t("addBook.statusWantToRead")}
                           </SelectItem>
                           <SelectItem value="reading" data-testid="option-reading">
-                            Currently Reading
+                            {t("addBook.statusReading")}
                           </SelectItem>
                           <SelectItem value="read" data-testid="option-read">
-                            Read
+                            {t("addBook.statusRead")}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -258,14 +260,14 @@ export function AddBook() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-serif text-base">
-                        Genre{" "}
+                        {t("addBook.fieldGenre")}{" "}
                         <span className="text-muted-foreground font-sans text-xs font-normal">
-                          (Optional)
+                          {t("addBook.optional")}
                         </span>
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g. Fiction, Fantasy"
+                          placeholder={t("addBook.genrePlaceholder")}
                           data-testid="input-genre"
                           {...field}
                         />
@@ -282,15 +284,15 @@ export function AddBook() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-serif text-base">
-                      Page Count{" "}
+                      {t("addBook.fieldPageCount")}{" "}
                       <span className="text-muted-foreground font-sans text-xs font-normal">
-                        (Optional)
+                        {t("addBook.optional")}
                       </span>
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="e.g. 544"
+                        placeholder={t("addBook.pagesPlaceholder")}
                         data-testid="input-pages"
                         {...field}
                       />
@@ -308,7 +310,7 @@ export function AddBook() {
                   disabled={createBook.isPending}
                   data-testid="button-submit-book"
                 >
-                  {createBook.isPending ? "Adding…" : "Add Book"}
+                  {createBook.isPending ? t("addBook.addingBook") : t("addBook.submit")}
                 </Button>
               </div>
             </form>

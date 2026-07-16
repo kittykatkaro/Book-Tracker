@@ -62,6 +62,9 @@
   "dependencies": {
     "expo-camera": "^17.0.10",
     "expo-clipboard": "^8.0.8",
-    "expo-document-picker": "^14.0.8"
+    "expo-document-picker": "^14.0.8",
+    "expo-localization": "^17.0.9",
+    "i18next": "^26.3.6",
+    "react-i18next": "^17.0.9"
   }
 }

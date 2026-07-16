@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,15 +105,8 @@ function usePosts(clubId: string, bookId: string | null) {
 // Add Book Dialog
 // ---------------------------------------------------------------------------
 
-function AddBookDialog({
-  clubId,
-  open,
-  onClose,
-}: {
-  clubId: string;
-  open: boolean;
-  onClose: () => void;
-}) {
+function AddBookDialog({ clubId, open, onClose }: { clubId: string; open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [title, setTitle] = useState("");
@@ -120,56 +114,38 @@ function AddBookDialog({
 
   const mutation = useMutation({
     mutationFn: (data: { title: string; author: string }) =>
-      customFetch(`/api/clubs/${clubId}/books`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      customFetch(`/api/clubs/${clubId}/books`, { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["club", clubId] });
-      toast({ title: "Book added to club!" });
-      setTitle("");
-      setAuthor("");
-      onClose();
+      toast({ title: t("clubDetail.addBook") + "!" });
+      setTitle(""); setAuthor(""); onClose();
     },
-    onError: (err: Error) =>
-      toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-serif">Add a book</DialogTitle>
-          <DialogDescription>Pick the next book for your club to read.</DialogDescription>
+          <DialogTitle className="font-serif">{t("clubDetail.addBookDialog.title")}</DialogTitle>
+          <DialogDescription>{t("clubDetail.addBookDialog.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label htmlFor="book-title">Title</Label>
-            <Input
-              id="book-title"
-              placeholder="Book title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            <Label htmlFor="book-title">{t("clubDetail.addBookDialog.titleLabel")}</Label>
+            <Input id="book-title" placeholder={t("clubDetail.addBookDialog.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="book-author">Author</Label>
-            <Input
-              id="book-author"
-              placeholder="Author name"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-            />
+            <Label htmlFor="book-author">{t("clubDetail.addBookDialog.authorLabel")}</Label>
+            <Input id="book-author" placeholder={t("clubDetail.addBookDialog.authorPlaceholder")} value={author} onChange={(e) => setAuthor(e.target.value)} />
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={onClose}>{t("clubDetail.addBookDialog.cancel")}</Button>
             <Button
               onClick={() => mutation.mutate({ title, author })}
               disabled={!title.trim() || !author.trim() || mutation.isPending}
             >
-              {mutation.isPending ? "Adding…" : "Add book"}
+              {mutation.isPending ? t("clubDetail.addBookDialog.adding") : t("clubDetail.addBookDialog.add")}
             </Button>
           </div>
         </div>
@@ -182,17 +158,8 @@ function AddBookDialog({
 // Add Post Dialog
 // ---------------------------------------------------------------------------
 
-function AddPostDialog({
-  clubId,
-  book,
-  open,
-  onClose,
-}: {
-  clubId: string;
-  book: ClubBook;
-  open: boolean;
-  onClose: () => void;
-}) {
+function AddPostDialog({ clubId, book, open, onClose }: { clubId: string; book: ClubBook; open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const { user } = useUser();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -200,44 +167,36 @@ function AddPostDialog({
   const [progressPage, setProgressPage] = useState("");
 
   const displayName =
-    user?.firstName ||
-    user?.username ||
-    user?.emailAddresses[0]?.emailAddress?.split("@")[0] ||
-    "Reader";
+    user?.firstName || user?.username ||
+    user?.emailAddresses[0]?.emailAddress?.split("@")[0] || "Reader";
 
   const mutation = useMutation({
     mutationFn: (data: { content: string; progressPage?: number; displayName: string }) =>
-      customFetch(`/api/clubs/${clubId}/books/${book.id}/posts`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      customFetch(`/api/clubs/${clubId}/books/${book.id}/posts`, { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["club-posts", clubId, book.id] });
       qc.invalidateQueries({ queryKey: ["club", clubId] });
-      toast({ title: "Posted!" });
-      setContent("");
-      setProgressPage("");
-      onClose();
+      toast({ title: t("clubDetail.postDialog.post") + "!" });
+      setContent(""); setProgressPage(""); onClose();
     },
-    onError: (err: Error) =>
-      toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-serif">Share your thoughts</DialogTitle>
+          <DialogTitle className="font-serif">{t("clubDetail.postDialog.title")}</DialogTitle>
           <DialogDescription>
-            Post about <span className="font-medium text-foreground">{book.title}</span>
+            {t("clubDetail.postDialog.descriptionAbout")} <span className="font-medium text-foreground">{book.title}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label htmlFor="post-content">Comment</Label>
+            <Label htmlFor="post-content">{t("clubDetail.postDialog.commentLabel")}</Label>
             <Textarea
               id="post-content"
-              placeholder="What are you thinking about this book?"
+              placeholder={t("clubDetail.postDialog.commentPlaceholder")}
               rows={4}
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -245,7 +204,7 @@ function AddPostDialog({
           </div>
           {book.pages && (
             <div className="space-y-1.5">
-              <Label htmlFor="post-page">Current page (optional)</Label>
+              <Label htmlFor="post-page">{t("clubDetail.postDialog.pageLabel")}</Label>
               <Input
                 id="post-page"
                 type="number"
@@ -259,9 +218,7 @@ function AddPostDialog({
             </div>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={onClose}>{t("clubDetail.postDialog.cancel")}</Button>
             <Button
               onClick={() =>
                 mutation.mutate({
@@ -272,7 +229,7 @@ function AddPostDialog({
               }
               disabled={!content.trim() || mutation.isPending}
             >
-              {mutation.isPending ? "Posting…" : "Post"}
+              {mutation.isPending ? t("clubDetail.postDialog.posting") : t("clubDetail.postDialog.post")}
             </Button>
           </div>
         </div>
@@ -286,27 +243,22 @@ function AddPostDialog({
 // ---------------------------------------------------------------------------
 
 function PostItem({
-  post,
-  isOwn,
-  isClubOwner,
-  onDelete,
+  post, isOwn, isClubOwner, onDelete,
 }: {
-  post: ClubPost;
-  isOwn: boolean;
-  isClubOwner: boolean;
-  onDelete: () => void;
+  post: ClubPost; isOwn: boolean; isClubOwner: boolean; onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const canDelete = isOwn || isClubOwner;
 
   const relativeTime = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t("clubDetail.justNow");
+    if (mins < 60) return t("clubDetail.minutesAgo", { count: mins });
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
+    if (hrs < 24) return t("clubDetail.hoursAgo", { count: hrs });
+    return t("clubDetail.daysAgo", { count: Math.floor(hrs / 24) });
   };
 
   return (
@@ -332,7 +284,6 @@ function PostItem({
               <button
                 onClick={() => setConfirming(true)}
                 className="text-muted-foreground hover:text-destructive transition-colors ml-1"
-                aria-label="Delete post"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -347,16 +298,16 @@ function PostItem({
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{t("clubDetail.deletePost.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("clubDetail.deletePost.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("clubDetail.deletePost.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={onDelete}
             >
-              Delete
+              {t("clubDetail.deletePost.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -369,15 +320,8 @@ function PostItem({
 // Book + Discussion Panel
 // ---------------------------------------------------------------------------
 
-function BookDiscussion({
-  club,
-  book,
-  currentUserId,
-}: {
-  club: ClubDetail;
-  book: ClubBook;
-  currentUserId: string;
-}) {
+function BookDiscussion({ club, book, currentUserId }: { club: ClubDetail; book: ClubBook; currentUserId: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [postOpen, setPostOpen] = useState(false);
@@ -385,16 +329,13 @@ function BookDiscussion({
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) =>
-      customFetch(`/api/clubs/${club.id}/books/${book.id}/posts/${postId}`, {
-        method: "DELETE",
-      }),
+      customFetch(`/api/clubs/${club.id}/books/${book.id}/posts/${postId}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["club-posts", club.id, book.id] });
       qc.invalidateQueries({ queryKey: ["club", club.id] });
       toast({ title: "Post deleted" });
     },
-    onError: (err: Error) =>
-      toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   return (
@@ -404,22 +345,18 @@ function BookDiscussion({
           className="w-10 h-14 rounded-md shrink-0 flex items-center justify-center"
           style={{ backgroundColor: book.coverColor }}
         >
-          <span className="text-white font-bold text-lg">
-            {book.title.charAt(0)}
-          </span>
+          <span className="text-white font-bold text-lg">{book.title.charAt(0)}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-serif font-semibold leading-tight line-clamp-1">
-            {book.title}
-          </h3>
+          <h3 className="font-serif font-semibold leading-tight line-clamp-1">{book.title}</h3>
           <p className="text-sm text-muted-foreground line-clamp-1">{book.author}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {book.postCount} {book.postCount === 1 ? "post" : "posts"}
+            {book.postCount} {t("clubDetail.postCount", { count: book.postCount })}
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => setPostOpen(true)}>
           <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-          Post
+          {t("clubDetail.post")}
         </Button>
       </div>
 
@@ -450,17 +387,12 @@ function BookDiscussion({
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            No posts yet — be the first to share your thoughts!
+            {t("clubDetail.noPostsYet")}
           </div>
         )}
       </div>
 
-      <AddPostDialog
-        clubId={club.id}
-        book={book}
-        open={postOpen}
-        onClose={() => setPostOpen(false)}
-      />
+      <AddPostDialog clubId={club.id} book={book} open={postOpen} onClose={() => setPostOpen(false)} />
     </>
   );
 }
@@ -470,6 +402,7 @@ function BookDiscussion({
 // ---------------------------------------------------------------------------
 
 export function ClubDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { user } = useUser();
   const qc = useQueryClient();
@@ -513,7 +446,7 @@ export function ClubDetail() {
       customFetch(`/api/clubs/${id}/books/${bookId}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["club", id] });
-      toast({ title: "Book removed" });
+      toast({ title: t("clubDetail.removeBook") });
     },
     onError: (err: Error) =>
       toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -540,9 +473,9 @@ export function ClubDetail() {
   if (!club) {
     return (
       <div className="text-center py-20 text-muted-foreground">
-        Club not found or you're not a member.{" "}
+        {t("clubDetail.notFound")}{" "}
         <Link href="/clubs" className="text-primary underline">
-          Back to clubs
+          {t("clubDetail.backLink")}
         </Link>
       </div>
     );
@@ -558,7 +491,7 @@ export function ClubDetail() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Book Clubs
+            {t("clubDetail.backToClubs")}
           </Link>
 
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -566,7 +499,7 @@ export function ClubDetail() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-serif text-3xl font-bold">{club.name}</h1>
                 {club.myRole === "owner" && (
-                  <Badge variant="secondary">Owner</Badge>
+                  <Badge variant="secondary">{t("clubDetail.owner")}</Badge>
                 )}
               </div>
               {club.description && (
@@ -577,14 +510,14 @@ export function ClubDetail() {
             {/* Invite code + actions */}
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center gap-1.5 bg-secondary rounded-lg px-3 py-1.5">
-                <span className="text-xs text-muted-foreground">Invite:</span>
+                <span className="text-xs text-muted-foreground">{t("clubDetail.invite")}</span>
                 <span className="font-mono text-sm font-semibold tracking-widest">
                   {club.inviteCode}
                 </span>
                 <button
                   onClick={copyInviteCode}
                   className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
-                  title="Copy invite code"
+                  title={t("clubDetail.copyInvite")}
                 >
                   {copied ? (
                     <Check className="h-3.5 w-3.5 text-primary" />
@@ -625,27 +558,23 @@ export function ClubDetail() {
             <div className="flex items-center justify-between">
               <h2 className="font-serif font-semibold text-xl flex items-center gap-2">
                 <BookMarked className="h-5 w-5 text-primary" />
-                Reading list
+                {t("clubDetail.readingList")}
               </h2>
               <Button size="sm" onClick={() => setAddBookOpen(true)}>
                 <Plus className="h-4 w-4 mr-1.5" />
-                Add book
+                {t("clubDetail.addBook")}
               </Button>
             </div>
 
             {club.books.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-border rounded-xl text-muted-foreground text-sm">
-                No books yet. Add the first book for your club!
+                {t("clubDetail.noBooksYet")}
               </div>
             ) : (
               <div className="space-y-8">
                 {club.books.map((book) => (
                   <div key={book.id} className="space-y-4">
-                    <BookDiscussion
-                      club={club}
-                      book={book}
-                      currentUserId={currentUserId}
-                    />
+                    <BookDiscussion club={club} book={book} currentUserId={currentUserId} />
                     {(club.myRole === "owner" || book.addedBy === currentUserId) && (
                       <div className="flex justify-end">
                         <button
@@ -653,7 +582,7 @@ export function ClubDetail() {
                           className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
                         >
                           <Trash2 className="h-3 w-3" />
-                          Remove book
+                          {t("clubDetail.removeBook")}
                         </button>
                       </div>
                     )}
@@ -670,7 +599,7 @@ export function ClubDetail() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  Members ({club.members.length})
+                  {t("clubDetail.members")} ({club.members.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 pt-0">
@@ -687,7 +616,7 @@ export function ClubDetail() {
                     </span>
                     {member.role === "owner" && (
                       <Badge variant="secondary" className="text-[10px] py-0 px-1.5 shrink-0">
-                        Owner
+                        {t("clubDetail.owner")}
                       </Badge>
                     )}
                   </div>
@@ -698,28 +627,22 @@ export function ClubDetail() {
         </div>
       </div>
 
-      <AddBookDialog
-        clubId={club.id}
-        open={addBookOpen}
-        onClose={() => setAddBookOpen(false)}
-      />
+      <AddBookDialog clubId={club.id} open={addBookOpen} onClose={() => setAddBookOpen(false)} />
 
       {/* Leave confirmation */}
       <AlertDialog open={leaveConfirm} onOpenChange={setLeaveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Leave this club?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You'll need a new invite code to rejoin.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("clubDetail.leaveClub")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("clubDetail.leaveDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("clubDetail.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => leaveMutation.mutate()}
             >
-              Leave
+              {t("clubDetail.leave")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -729,19 +652,16 @@ export function ClubDetail() {
       <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this club?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the club, all books, and all discussions.
-              This cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("clubDetail.deleteClub")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("clubDetail.deleteDesc")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("clubDetail.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteMutation.mutate()}
             >
-              Delete club
+              {t("clubDetail.deleteConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

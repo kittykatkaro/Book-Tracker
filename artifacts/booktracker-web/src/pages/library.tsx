@@ -11,8 +11,10 @@ import { Link } from "wouter"
 import { useState, useEffect } from "react"
 import { ImportBooksDialog } from "@/components/import-books-dialog"
 import { useUser } from "@clerk/react"
+import { useTranslation } from "react-i18next"
 
 function BookCard({ book }: { book: Book }) {
+  const { t } = useTranslation()
   const initial = book.title.charAt(0).toUpperCase()
   const progress = book.pages && book.currentPage ? (book.currentPage / book.pages) * 100 : 0
   
@@ -35,7 +37,7 @@ function BookCard({ book }: { book: Book }) {
           {book.status === 'reading' && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Reading</span>
+                <span>{t("library.statusReading")}</span>
                 <span>{book.currentPage || 0} / {book.pages || '?'} p</span>
               </div>
               <Progress value={progress} className="h-1.5 bg-accent/20" />
@@ -44,7 +46,7 @@ function BookCard({ book }: { book: Book }) {
           
           <div className="flex items-center justify-between">
             <Badge variant={book.status === 'reading' ? 'accent' : book.status === 'read' ? 'default' : 'secondary'} className="px-2 py-0">
-              {book.status === 'reading' ? 'Reading' : book.status === 'read' ? 'Read' : 'Want to Read'}
+              {book.status === 'reading' ? t("library.statusReading") : book.status === 'read' ? t("library.statusRead") : t("library.statusWantToRead")}
             </Badge>
             
             {book.status === 'read' && book.rating && (
@@ -80,6 +82,7 @@ function SkeletonGrid() {
 }
 
 export function Library() {
+  const { t } = useTranslation()
   const { user, isLoaded: clerkLoaded } = useUser()
   const [tab, setTab] = useState<'all' | 'reading' | 'want_to_read' | 'read'>('all')
   const [importOpen, setImportOpen] = useState(false)
@@ -90,7 +93,6 @@ export function Library() {
     return localStorage.getItem(storageKey) === 'true'
   })
 
-  // Re-check localStorage once the user id becomes available (after auth loads)
   useEffect(() => {
     if (!storageKey) return
     setBannerDismissed(localStorage.getItem(storageKey) === 'true')
@@ -118,8 +120,8 @@ export function Library() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">Your Library</h1>
-          <p className="text-muted-foreground mt-1">A curated collection of your literary journey.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{t("library.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("library.subtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -130,35 +132,32 @@ export function Library() {
             data-testid="button-import-books"
           >
             <Upload className="h-4 w-4" />
-            Import
+            {t("library.import")}
           </Button>
           <div className="text-sm font-medium text-muted-foreground bg-white/50 dark:bg-black/10 px-3 py-1 rounded-full border">
-            {counts.all} Books Total
+            {t("library.booksTotal", { count: counts.all })}
           </div>
         </div>
       </div>
 
-      {/* Onboarding banner — shown only to new users with an empty library */}
       {isNewUser && (
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-5">
           <div className="w-10 h-10 shrink-0 rounded-full bg-primary/15 flex items-center justify-center">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-serif font-semibold text-foreground">Welcome to your library!</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Add books one by one, or import your entire reading history from Goodreads, a spreadsheet, or a document.
-            </p>
+            <p className="font-serif font-semibold text-foreground">{t("library.welcome")}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{t("library.welcomeSub")}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" onClick={() => setImportOpen(true)} className="gap-1.5 rounded-full">
-              <Upload className="h-3.5 w-3.5" /> Import library
+              <Upload className="h-3.5 w-3.5" /> {t("library.importLibrary")}
             </Button>
             <button
               onClick={dismissBanner}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Dismiss
+              {t("library.dismiss")}
             </button>
           </div>
         </div>
@@ -173,28 +172,28 @@ export function Library() {
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-3 text-base font-serif"
             data-testid="tab-all"
           >
-            All <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.all}</span>
+            {t("library.tabAll")} <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.all}</span>
           </TabsTrigger>
           <TabsTrigger 
             value="reading" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-3 text-base font-serif"
             data-testid="tab-reading"
           >
-            Reading <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.reading}</span>
+            {t("library.tabReading")} <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.reading}</span>
           </TabsTrigger>
           <TabsTrigger 
             value="want_to_read" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-3 text-base font-serif"
             data-testid="tab-want-to-read"
           >
-            Want to Read <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.want_to_read}</span>
+            {t("library.tabWantToRead")} <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.want_to_read}</span>
           </TabsTrigger>
           <TabsTrigger 
             value="read" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-3 text-base font-serif"
             data-testid="tab-read"
           >
-            Finished <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.read}</span>
+            {t("library.tabFinished")} <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded-full">{counts.read}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -206,14 +205,14 @@ export function Library() {
               <div className="mx-auto w-16 h-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <BookOpen className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-serif text-xl font-medium mb-2">No books found</h3>
+              <h3 className="font-serif text-xl font-medium mb-2">{t("library.emptyTitle")}</h3>
               <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                 {tab === 'all' 
-                  ? "Your library is empty. Add a book to begin your tracking journey."
-                  : `You don't have any books marked as ${tab.replace('_', ' ')}.`}
+                  ? t("library.emptyAll")
+                  : t("library.emptyFiltered", { status: tab.replace('_', ' ') })}
               </p>
               <Link href="/add" className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors" data-testid="link-empty-add-book">
-                Add a Book
+                {t("library.addABook")}
               </Link>
             </div>
           ) : (

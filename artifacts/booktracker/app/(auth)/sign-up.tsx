@@ -14,12 +14,14 @@ import { Link, useRouter } from 'expo-router';
 import { useSignUp } from '@clerk/expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { useTranslation } from 'react-i18next';
 
 export default function SignUpScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signUp, errors, fetchStatus } = useSignUp();
+  const { t } = useTranslation();
 
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
@@ -90,16 +92,16 @@ export default function SignUpScreen() {
             <View style={[s.logoBox, { backgroundColor: colors.primary + '18' }]}>
               <Text style={s.logoEmoji}>✉️</Text>
             </View>
-            <Text style={[s.title, { color: colors.foreground }]}>Check your email</Text>
+            <Text style={[s.title, { color: colors.foreground }]}>{t('auth.verifyTitle')}</Text>
             <Text style={[s.subtitle, { color: colors.mutedForeground }]}>
-              We sent a 6-digit code to{'\n'}
+              {t('auth.verifySubtitle')}{'\n'}
               <Text style={{ color: colors.primary }}>{email}</Text>
             </Text>
           </View>
 
           <View style={s.form}>
             <View style={s.field}>
-              <Text style={[s.label, { color: colors.mutedForeground }]}>VERIFICATION CODE</Text>
+              <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.verifyCodeLabel')}</Text>
               <TextInput
                 style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground, letterSpacing: 6, textAlign: 'center', fontSize: 20 }]}
                 value={code}
@@ -130,7 +132,7 @@ export default function SignUpScreen() {
               {isLoading ? (
                 <ActivityIndicator color={colors.primaryForeground} />
               ) : (
-                <Text style={[s.submitBtnText, { color: colors.primaryForeground }]}>Verify email</Text>
+                <Text style={[s.submitBtnText, { color: colors.primaryForeground }]}>{t('auth.verify')}</Text>
               )}
             </Pressable>
 
@@ -139,7 +141,7 @@ export default function SignUpScreen() {
               onPress={() => signUp.verifications.sendEmailCode()}
               disabled={isLoading}
             >
-              <Text style={[s.resendText, { color: colors.primary }]}>Resend code</Text>
+              <Text style={[s.resendText, { color: colors.primary }]}>{t('auth.resend')}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -162,20 +164,20 @@ export default function SignUpScreen() {
           <View style={[s.logoBox, { backgroundColor: colors.primary + '18' }]}>
             <Text style={s.logoEmoji}>📚</Text>
           </View>
-          <Text style={[s.title, { color: colors.foreground }]}>Start your library</Text>
+          <Text style={[s.title, { color: colors.foreground }]}>{t('auth.signUpTitle')}</Text>
           <Text style={[s.subtitle, { color: colors.mutedForeground }]}>
-            Create an account to track your books
+            {t('auth.signUpSubtitle')}
           </Text>
         </View>
 
         <View style={s.form}>
           <View style={s.field}>
-            <Text style={[s.label, { color: colors.mutedForeground }]}>USERNAME</Text>
+            <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.usernameLabel')}</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground }]}
               value={username}
               onChangeText={setUsername}
-              placeholder="bookworm42"
+              placeholder={t('auth.usernamePlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="none"
               autoCorrect={false}
@@ -187,12 +189,12 @@ export default function SignUpScreen() {
           </View>
 
           <View style={s.field}>
-            <Text style={[s.label, { color: colors.mutedForeground }]}>FULL NAME</Text>
+            <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.fullNameLabel')}</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground }]}
               value={name}
               onChangeText={setName}
-              placeholder="Jane Austen"
+              placeholder={t('auth.fullNamePlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               autoComplete="name"
               returnKeyType="next"
@@ -203,12 +205,12 @@ export default function SignUpScreen() {
           </View>
 
           <View style={s.field}>
-            <Text style={[s.label, { color: colors.mutedForeground }]}>EMAIL</Text>
+            <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.emailLabel')}</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground }]}
               value={email}
               onChangeText={setEmail}
-              placeholder="your@email.com"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -221,12 +223,12 @@ export default function SignUpScreen() {
           </View>
 
           <View style={s.field}>
-            <Text style={[s.label, { color: colors.mutedForeground }]}>PASSWORD</Text>
+            <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.passwordLabel')}</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.secondary, borderColor: colors.border, color: colors.foreground }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="At least 8 characters"
+              placeholder={t('auth.newPasswordPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               secureTextEntry
               autoComplete="new-password"
@@ -254,21 +256,20 @@ export default function SignUpScreen() {
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={[s.submitBtnText, { color: colors.primaryForeground }]}>
-                Create account
+                {t('auth.createAccount')}
               </Text>
             )}
           </Pressable>
 
-          {/* Required for Clerk bot protection */}
           <View nativeID="clerk-captcha" />
 
           <View style={s.footer}>
             <Text style={[s.footerText, { color: colors.mutedForeground }]}>
-              Already have an account?{' '}
+              {t('auth.haveAccount')}{' '}
             </Text>
             <Link href="/(auth)/sign-in" asChild>
               <Pressable>
-                <Text style={[s.footerLink, { color: colors.primary }]}>Sign in</Text>
+                <Text style={[s.footerLink, { color: colors.primary }]}>{t('auth.signInLink')}</Text>
               </Pressable>
             </Link>
           </View>

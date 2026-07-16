@@ -4,6 +4,7 @@ import { useParams, useLocation } from "wouter"
 import { Link } from "wouter"
 import { format } from "date-fns"
 import { useRef, useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ import {
 import { ArrowLeft, Trash2, Calendar, Star, BookOpen, Clock } from "lucide-react"
 
 export function BookDetail() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
@@ -34,7 +36,6 @@ export function BookDetail() {
   const updateBook = useUpdateBook()
   const deleteBook = useDeleteBook()
 
-  // Local state for auto-save inputs
   const [notes, setNotes] = useState("")
   const [currentPage, setCurrentPage] = useState<string>("")
   const initializedForId = useRef<string | null>(null)
@@ -56,7 +57,6 @@ export function BookDetail() {
     if (newStatus === 'read' && !book?.dateFinished) {
       updates.dateFinished = new Date().toISOString()
     }
-    
     updateBook.mutate({ id: id!, data: updates }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetBookQueryKey(id!) })
@@ -86,7 +86,6 @@ export function BookDetail() {
   const handleSaveCurrentPage = (value: string) => {
     const pageNum = parseInt(value, 10)
     if (isNaN(pageNum)) return
-
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(() => {
       updateBook.mutate({ id: id!, data: { currentPage: pageNum } }, {
@@ -120,17 +119,23 @@ export function BookDetail() {
     )
   }
 
-  if (!book) return <div>Book not found</div>
+  if (!book) return <div>{t("bookDetail.deleteTitle")}</div>
 
   const initial = book.title.charAt(0).toUpperCase()
   const progress = book.pages && book.currentPage ? (book.currentPage / book.pages) * 100 : 0
+
+  const statusOptions = [
+    { id: 'want_to_read', label: t("bookDetail.statusWantToRead") },
+    { id: 'reading', label: t("bookDetail.statusReading") },
+    { id: 'read', label: t("bookDetail.statusFinished") },
+  ]
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex justify-between items-center">
         <Link href="/" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors" data-testid="link-back-library">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Library
+          {t("bookDetail.backToLibrary")}
         </Link>
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -140,15 +145,15 @@ export function BookDetail() {
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete this book?</AlertDialogTitle>
+              <AlertDialogTitle>{t("bookDetail.deleteTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently remove {book.title} from your library.
+                {t("bookDetail.deleteDesc", { title: book.title })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel data-testid="button-delete-cancel">Cancel</AlertDialogCancel>
+              <AlertDialogCancel data-testid="button-delete-cancel">{t("bookDetail.cancel")}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" data-testid="button-delete-confirm">
-                Delete Book
+                {t("bookDetail.delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -170,18 +175,18 @@ export function BookDetail() {
           <div className="bg-white/50 dark:bg-black/20 rounded-xl p-4 border border-border/50 space-y-3">
             <div className="flex items-center text-xs text-muted-foreground">
               <Calendar className="h-3.5 w-3.5 mr-2" />
-              Added {format(new Date(book.dateAdded), "MMM d, yyyy")}
+              {t("bookDetail.added")} {format(new Date(book.dateAdded), "MMM d, yyyy")}
             </div>
             {book.dateStarted && (
               <div className="flex items-center text-xs text-muted-foreground">
                 <BookOpen className="h-3.5 w-3.5 mr-2" />
-                Started {format(new Date(book.dateStarted), "MMM d, yyyy")}
+                {t("bookDetail.started")} {format(new Date(book.dateStarted), "MMM d, yyyy")}
               </div>
             )}
             {book.dateFinished && (
               <div className="flex items-center text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 mr-2" />
-                Finished {format(new Date(book.dateFinished), "MMM d, yyyy")}
+                {t("bookDetail.finished")} {format(new Date(book.dateFinished), "MMM d, yyyy")}
               </div>
             )}
             {book.genre && (
@@ -201,11 +206,7 @@ export function BookDetail() {
 
           {/* Status segmented control */}
           <div className="bg-secondary/50 p-1.5 rounded-lg inline-flex w-full sm:w-auto overflow-hidden">
-            {[
-              { id: 'want_to_read', label: 'Want to Read' },
-              { id: 'reading', label: 'Reading' },
-              { id: 'read', label: 'Finished' }
-            ].map(status => (
+            {statusOptions.map(status => (
               <button
                 key={status.id}
                 onClick={() => handleStatusChange(status.id as any)}
@@ -226,7 +227,7 @@ export function BookDetail() {
               <div className="flex justify-between items-end">
                 <h3 className="font-serif font-semibold text-lg text-accent-foreground flex items-center">
                   <BookOpen className="h-5 w-5 mr-2 text-accent" />
-                  Reading Progress
+                  {t("bookDetail.readingProgress")}
                 </h3>
                 <div className="flex items-center gap-2">
                   <Input 
@@ -244,7 +245,7 @@ export function BookDetail() {
                 </div>
               </div>
               <Progress value={progress} className="h-3" />
-              <p className="text-xs text-muted-foreground text-right">{Math.round(progress)}% complete</p>
+              <p className="text-xs text-muted-foreground text-right">{Math.round(progress)}% {t("bookDetail.complete")}</p>
             </div>
           )}
 
@@ -252,7 +253,7 @@ export function BookDetail() {
             <div className="bg-primary/5 border border-primary/10 rounded-xl p-6 flex flex-col items-center sm:flex-row sm:justify-between gap-4">
               <h3 className="font-serif font-semibold text-lg text-primary flex items-center">
                 <Star className="h-5 w-5 mr-2" />
-                Your Rating
+                {t("bookDetail.yourRating")}
               </h3>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -276,9 +277,9 @@ export function BookDetail() {
           )}
 
           <div className="space-y-3 pt-4">
-            <h3 className="font-serif font-semibold text-xl border-b border-border/50 pb-2">Notes & Thoughts</h3>
+            <h3 className="font-serif font-semibold text-xl border-b border-border/50 pb-2">{t("bookDetail.notesTitle")}</h3>
             <Textarea 
-              placeholder="Jot down your impressions, favorite quotes, or thoughts..."
+              placeholder={t("bookDetail.notesPlaceholder")}
               className="min-h-[200px] resize-y bg-white/50 dark:bg-black/20 border-border/50 focus-visible:bg-background text-base p-4 leading-relaxed"
               value={notes}
               onChange={(e) => {

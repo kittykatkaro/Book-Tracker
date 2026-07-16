@@ -78,6 +78,8 @@
     "@clerk/react": "^6.12.3",
     "@clerk/themes": "^2.4.57",
     "@zxing/browser": "^0.2.1",
-    "@zxing/library": "^0.23.0"
+    "@zxing/library": "^0.23.0",
+    "i18next": "^26.3.6",
+    "react-i18next": "^17.0.9"
   }
 }
