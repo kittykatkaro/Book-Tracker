@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Platform,
@@ -17,6 +17,8 @@ import { ImportModal } from '@/components/ImportModal';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUser } from '@clerk/expo';
 
 type Filter = 'all' | 'reading' | 'want_to_read' | 'read';
 
@@ -38,8 +40,24 @@ export default function LibraryScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { books, isLoading } = useBooks();
+  const { user } = useUser();
   const [filter, setFilter] = useState<Filter>('all');
   const [importOpen, setImportOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(true); // default true to avoid flash
+
+  const bannerKey = user?.id ? `banner_dismissed_${user.id}` : null;
+
+  useEffect(() => {
+    if (!bannerKey) return;
+    AsyncStorage.getItem(bannerKey).then((value) => {
+      setBannerDismissed(value === 'true');
+    });
+  }, [bannerKey]);
+
+  const dismissBanner = async () => {
+    if (bannerKey) await AsyncStorage.setItem(bannerKey, 'true');
+    setBannerDismissed(true);
+  };
 
   const filtered = useMemo(() => {
     if (filter === 'all') return books;
@@ -95,6 +113,33 @@ export default function LibraryScreen() {
       </View>
 
       <ImportModal visible={importOpen} onClose={() => setImportOpen(false)} />
+
+      {/* Onboarding banner — shown only to new users with an empty library */}
+      {!isLoading && books.length === 0 && !bannerDismissed && (
+        <View style={[styles.banner, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '33' }]}>
+          <View style={[styles.bannerIcon, { backgroundColor: colors.primary + '25' }]}>
+            <Feather name="star" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.bannerBody}>
+            <Text style={[styles.bannerTitle, { color: colors.foreground }]}>Welcome to your library!</Text>
+            <Text style={[styles.bannerSub, { color: colors.mutedForeground }]}>
+              Add books one by one, or import your reading history from Goodreads or a spreadsheet.
+            </Text>
+          </View>
+          <View style={styles.bannerActions}>
+            <Pressable
+              onPress={() => setImportOpen(true)}
+              style={[styles.bannerImportBtn, { backgroundColor: colors.primary }]}
+            >
+              <Feather name="upload" size={13} color={colors.primaryForeground} />
+              <Text style={[styles.bannerImportText, { color: colors.primaryForeground }]}>Import</Text>
+            </Pressable>
+            <Pressable onPress={dismissBanner} hitSlop={8}>
+              <Text style={[styles.bannerDismiss, { color: colors.mutedForeground }]}>Dismiss</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Filter tabs */}
       <ScrollView
@@ -243,5 +288,55 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 4,
+  },
+  banner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: 'column',
+    gap: 10,
+  },
+  bannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerBody: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 3,
+  },
+  bannerSub: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
+  },
+  bannerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bannerImportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  bannerImportText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  bannerDismiss: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
   },
 });

@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Star, BookOpen, Upload, Sparkles } from "lucide-react"
 import { Link } from "wouter"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ImportBooksDialog } from "@/components/import-books-dialog"
+import { useUser } from "@clerk/react"
 
 function BookCard({ book }: { book: Book }) {
   const initial = book.title.charAt(0).toUpperCase()
@@ -79,9 +80,26 @@ function SkeletonGrid() {
 }
 
 export function Library() {
+  const { user, isLoaded: clerkLoaded } = useUser()
   const [tab, setTab] = useState<'all' | 'reading' | 'want_to_read' | 'read'>('all')
   const [importOpen, setImportOpen] = useState(false)
-  const [bannerDismissed, setBannerDismissed] = useState(false)
+
+  const storageKey = user?.id ? `banner_dismissed_${user.id}` : null
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (!storageKey) return false
+    return localStorage.getItem(storageKey) === 'true'
+  })
+
+  // Re-check localStorage once the user id becomes available (after auth loads)
+  useEffect(() => {
+    if (!storageKey) return
+    setBannerDismissed(localStorage.getItem(storageKey) === 'true')
+  }, [storageKey])
+
+  const dismissBanner = () => {
+    if (storageKey) localStorage.setItem(storageKey, 'true')
+    setBannerDismissed(true)
+  }
 
   const { data: books, isLoading } = useListBooks(
     tab === 'all' ? undefined : { status: tab }
@@ -94,7 +112,7 @@ export function Library() {
     read: useListBooks({ status: 'read' }).data?.length || 0,
   }
 
-  const isNewUser = !isLoading && counts.all === 0 && !bannerDismissed
+  const isNewUser = clerkLoaded && !isLoading && counts.all === 0 && !bannerDismissed
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -137,7 +155,7 @@ export function Library() {
               <Upload className="h-3.5 w-3.5" /> Import library
             </Button>
             <button
-              onClick={() => setBannerDismissed(true)}
+              onClick={dismissBanner}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               Dismiss
