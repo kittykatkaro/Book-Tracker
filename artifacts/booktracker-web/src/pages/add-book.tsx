@@ -25,15 +25,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, BookPlus, ScanBarcode, Search, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, BookPlus, ScanBarcode, Search, Loader2, CheckCircle, AlertCircle, Layers } from "lucide-react";
 import { Link } from "wouter";
 import { IsbnScannerDialog } from "@/components/isbn-scanner";
+import { IsbnSetImport } from "@/components/isbn-set-import";
+
+type Mode = "single" | "set";
 
 export function AddBook() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const createBook = useCreateBook();
+  const [mode, setMode] = useState<Mode>("single");
 
   const formSchema = z.object({
     title: z.string().min(1, t("addBook.titleRequired")),
@@ -116,7 +120,7 @@ export function AddBook() {
       </Link>
 
       <Card className="border-none shadow-xl shadow-black/5 bg-white/80 dark:bg-black/40 backdrop-blur-sm">
-        <CardHeader className="text-center pb-8 border-b border-border/50">
+        <CardHeader className="text-center pb-6 border-b border-border/50">
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <BookPlus className="h-6 w-6 text-primary" />
           </div>
@@ -124,197 +128,232 @@ export function AddBook() {
           <p className="text-muted-foreground mt-2 font-sans">
             {t("addBook.subtitle")}
           </p>
+
+          {/* Mode toggle */}
+          <div className="flex justify-center mt-4">
+            <div className="inline-flex rounded-full border border-border p-1 bg-secondary/50 gap-1">
+              <button
+                type="button"
+                onClick={() => setMode("single")}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  mode === "single"
+                    ? "bg-background shadow text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t("addBook.modeSingle")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("set")}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  mode === "set"
+                    ? "bg-background shadow text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                {t("addBook.modeSet")}
+              </button>
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-8">
-          {/* ISBN Lookup */}
-          <div className="mb-8 p-4 rounded-xl bg-secondary/50 border border-border/40 space-y-3">
-            <p className="text-sm font-medium text-foreground flex items-center gap-2">
-              <ScanBarcode className="h-4 w-4 text-primary" />
-              {t("addBook.isbnLabel")}
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={isbnInput}
-                onChange={(e) => {
-                  setIsbnInput(e.target.value);
-                  setLookupStatus("idle");
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleLookup(isbnInput)}
-                placeholder={t("addBook.isbnPlaceholder")}
-                className="font-mono text-sm"
-                data-testid="input-isbn"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleLookup(isbnInput)}
-                disabled={lookupLoading || isbnInput.replace(/[^0-9Xx]/g, "").length < 10}
-                data-testid="button-lookup-isbn"
-              >
-                {lookupLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setScannerOpen(true)}
-                data-testid="button-scan-isbn"
-                title={t("addBook.scanHint")}
-              >
-                <ScanBarcode className="h-4 w-4" />
-              </Button>
-            </div>
+          {mode === "set" ? (
+            <IsbnSetImport />
+          ) : (
+            <>
+              {/* ISBN Lookup */}
+              <div className="mb-8 p-4 rounded-xl bg-secondary/50 border border-border/40 space-y-3">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <ScanBarcode className="h-4 w-4 text-primary" />
+                  {t("addBook.isbnLabel")}
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={isbnInput}
+                    onChange={(e) => {
+                      setIsbnInput(e.target.value);
+                      setLookupStatus("idle");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleLookup(isbnInput)}
+                    placeholder={t("addBook.isbnPlaceholder")}
+                    className="font-mono text-sm"
+                    data-testid="input-isbn"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleLookup(isbnInput)}
+                    disabled={lookupLoading || isbnInput.replace(/[^0-9Xx]/g, "").length < 10}
+                    data-testid="button-lookup-isbn"
+                  >
+                    {lookupLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setScannerOpen(true)}
+                    data-testid="button-scan-isbn"
+                    title={t("addBook.scanHint")}
+                  >
+                    <ScanBarcode className="h-4 w-4" />
+                  </Button>
+                </div>
 
-            {lookupStatus === "success" && (
-              <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1" data-testid="text-lookup-success">
-                <CheckCircle className="h-3 w-3" /> {t("addBook.isbnSuccess")}
-              </p>
-            )}
-            {lookupStatus === "error" && (
-              <p className="text-xs text-destructive flex items-center gap-1" data-testid="text-lookup-error">
-                <AlertCircle className="h-3 w-3" /> {t("addBook.isbnError")}
-              </p>
-            )}
-            {lookupStatus === "idle" && (
-              <p className="text-xs text-muted-foreground">
-                {t("addBook.isbnHint")}
-              </p>
-            )}
-          </div>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-serif text-base">{t("addBook.fieldTitle")}</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder={t("addBook.titlePlaceholder")}
-                        className="text-lg py-6"
-                        data-testid="input-title"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                {lookupStatus === "success" && (
+                  <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1" data-testid="text-lookup-success">
+                    <CheckCircle className="h-3 w-3" /> {t("addBook.isbnSuccess")}
+                  </p>
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="author"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-serif text-base">{t("addBook.fieldAuthor")}</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder={t("addBook.authorPlaceholder")}
-                        data-testid="input-author"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                {lookupStatus === "error" && (
+                  <p className="text-xs text-destructive flex items-center gap-1" data-testid="text-lookup-error">
+                    <AlertCircle className="h-3 w-3" /> {t("addBook.isbnError")}
+                  </p>
                 )}
-              />
+                {lookupStatus === "idle" && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("addBook.isbnHint")}
+                  </p>
+                )}
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-serif text-base">{t("addBook.fieldStatus")}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-serif text-base">{t("addBook.fieldTitle")}</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-status">
-                            <SelectValue placeholder={t("addBook.selectStatus")} />
-                          </SelectTrigger>
+                          <Input
+                            placeholder={t("addBook.titlePlaceholder")}
+                            className="text-lg py-6"
+                            data-testid="input-title"
+                            {...field}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="want_to_read" data-testid="option-want-to-read">
-                            {t("addBook.statusWantToRead")}
-                          </SelectItem>
-                          <SelectItem value="reading" data-testid="option-reading">
-                            {t("addBook.statusReading")}
-                          </SelectItem>
-                          <SelectItem value="read" data-testid="option-read">
-                            {t("addBook.statusRead")}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="author"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-serif text-base">{t("addBook.fieldAuthor")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t("addBook.authorPlaceholder")}
+                            data-testid="input-author"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="genre"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-serif text-base">
-                        {t("addBook.fieldGenre")}{" "}
-                        <span className="text-muted-foreground font-sans text-xs font-normal">
-                          {t("addBook.optional")}
-                        </span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={t("addBook.genrePlaceholder")}
-                          data-testid="input-genre"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-serif text-base">{t("addBook.fieldStatus")}</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-status">
+                                <SelectValue placeholder={t("addBook.selectStatus")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="want_to_read" data-testid="option-want-to-read">
+                                {t("addBook.statusWantToRead")}
+                              </SelectItem>
+                              <SelectItem value="reading" data-testid="option-reading">
+                                {t("addBook.statusReading")}
+                              </SelectItem>
+                              <SelectItem value="read" data-testid="option-read">
+                                {t("addBook.statusRead")}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              <FormField
-                control={form.control}
-                name="pages"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-serif text-base">
-                      {t("addBook.fieldPageCount")}{" "}
-                      <span className="text-muted-foreground font-sans text-xs font-normal">
-                        {t("addBook.optional")}
-                      </span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder={t("addBook.pagesPlaceholder")}
-                        data-testid="input-pages"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <FormField
+                      control={form.control}
+                      name="genre"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-serif text-base">
+                            {t("addBook.fieldGenre")}{" "}
+                            <span className="text-muted-foreground font-sans text-xs font-normal">
+                              {t("addBook.optional")}
+                            </span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={t("addBook.genrePlaceholder")}
+                              data-testid="input-genre"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <div className="pt-4 flex justify-end">
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="rounded-full px-8 font-serif"
-                  disabled={createBook.isPending}
-                  data-testid="button-submit-book"
-                >
-                  {createBook.isPending ? t("addBook.addingBook") : t("addBook.submit")}
-                </Button>
-              </div>
-            </form>
-          </Form>
+                  <FormField
+                    control={form.control}
+                    name="pages"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-serif text-base">
+                          {t("addBook.fieldPageCount")}{" "}
+                          <span className="text-muted-foreground font-sans text-xs font-normal">
+                            {t("addBook.optional")}
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder={t("addBook.pagesPlaceholder")}
+                            data-testid="input-pages"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="pt-4 flex justify-end">
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="rounded-full px-8 font-serif"
+                      disabled={createBook.isPending}
+                      data-testid="button-submit-book"
+                    >
+                      {createBook.isPending ? t("addBook.addingBook") : t("addBook.submit")}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </>
+          )}
         </CardContent>
       </Card>
 

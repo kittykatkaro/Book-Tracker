@@ -109,7 +109,20 @@
     "genreLabel": "GENRE",
     "statusWantToRead": "Want to Read",
     "statusReading": "Reading",
-    "statusRead": "Read"
+    "statusRead": "Read",
+    "modeSingle": "Single",
+    "modeSet": "Book Set",
+    "setImportHint": "Type or scan ISBNs one at a time to build a list. Up to 20 books.",
+    "setQueueEmpty": "No ISBNs yet — type one above or scan a barcode.",
+    "setLookupAll": "Look up all ({{count}})",
+    "setMarkAll": "Mark all as:",
+    "setImportNotFound": "Not found",
+    "setImportFailed": "Error",
+    "setImportAdd": "Add {{count}} book",
+    "setImportAdd_other": "Add {{count}} books",
+    "setImportReset": "Start over",
+    "setImportSuccess": "{{count}} book added!",
+    "setImportSuccess_other": "{{count}} books added!"
   },
   "import": {
     "title": "Import your library",

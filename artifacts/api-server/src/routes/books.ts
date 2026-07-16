@@ -164,6 +164,59 @@ router.get("/isbn-lookup", async (req, res) => {
   }
 });
 
+// POST /api/books/isbn-bulk-lookup
+router.post("/isbn-bulk-lookup", async (req, res) => {
+  const { isbns } = req.body as { isbns?: unknown };
+  if (!Array.isArray(isbns) || isbns.length === 0) {
+    return res.status(400).json({ error: "isbns must be a non-empty array" });
+  }
+  if (isbns.length > 20) {
+    return res.status(400).json({ error: "Maximum 20 ISBNs per request" });
+  }
+
+  async function lookupOne(isbn: string) {
+    const clean = String(isbn).replace(/[^0-9Xx]/g, "");
+    if (clean.length < 10) return { isbn, status: "invalid" as const };
+    try {
+      const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${clean}&format=json&jscmd=data`;
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const data = (await response.json()) as Record<string, unknown>;
+      const key = `ISBN:${clean}`;
+      if (!data[key]) return { isbn: clean, status: "not_found" as const };
+      const book = data[key] as Record<string, unknown>;
+      const authors = Array.isArray(book.authors)
+        ? (book.authors as { name?: string }[]).map((a) => a.name).filter(Boolean).join(", ")
+        : "";
+      const subjects = book.subjects as { name?: string }[] | string[] | undefined;
+      const genre =
+        Array.isArray(subjects) && subjects.length > 0
+          ? typeof subjects[0] === "string"
+            ? subjects[0]
+            : (subjects[0] as { name?: string }).name ?? null
+          : null;
+      const cover = book.cover as Record<string, string> | undefined;
+      const publishYear = book.publish_date
+        ? (() => { const m = String(book.publish_date).match(/\d{4}/); return m ? parseInt(m[0], 10) : null; })()
+        : null;
+      return {
+        isbn: clean,
+        status: "found" as const,
+        title: (book.title as string) || "",
+        author: authors,
+        pages: (book.number_of_pages as number) ?? null,
+        genre,
+        coverUrl: cover?.large || cover?.medium || cover?.small || null,
+        publishYear,
+      };
+    } catch {
+      return { isbn: String(isbn).replace(/[^0-9Xx]/g, ""), status: "error" as const };
+    }
+  }
+
+  const results = await Promise.all((isbns as string[]).map(lookupOne));
+  return res.json({ results });
+});
+
 // POST /api/books
 router.post("/", requireAuth, async (req, res) => {
   try {
