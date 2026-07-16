@@ -105,6 +105,11 @@ export function Library() {
     setBannerDismissed(true)
   }
 
+  const resetBanner = () => {
+    if (storageKey) localStorage.removeItem(storageKey)
+    setBannerDismissed(false)
+  }
+
   const handleImported = ({ enriching }: { imported: number; skipped: number; enriching: number }) => {
     if (enriching <= 0) return
     setEnrichingCount(enriching)
@@ -243,6 +248,24 @@ export function Library() {
               <Link href="/add" className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors" data-testid="link-empty-add-book">
                 {t("library.addABook")}
               </Link>
+              {tab === 'all' && (
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
+                  data-testid="link-empty-import"
+                >
+                  {t("library.importShortcut")}
+                </button>
+              )}
+              {tab === 'all' && bannerDismissed && (
+                <button
+                  onClick={resetBanner}
+                  className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  data-testid="link-show-tips-again"
+                >
+                  {t("library.showTipsAgain")}
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">

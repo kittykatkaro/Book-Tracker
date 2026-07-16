@@ -48,6 +48,11 @@ export default function LibraryScreen() {
     setBannerDismissed(true);
   };
 
+  const resetBanner = async () => {
+    if (bannerKey) await AsyncStorage.removeItem(bannerKey);
+    setBannerDismissed(false);
+  };
+
   const FILTERS: { key: Filter; label: string }[] = [
     { key: 'all', label: t('library.filterAll') },
     { key: 'reading', label: t('library.filterReading') },
@@ -192,11 +197,33 @@ export default function LibraryScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           !isLoading ? (
-            <EmptyState
-              icon={EMPTY_MESSAGES[filter].icon}
-              title={EMPTY_MESSAGES[filter].title}
-              subtitle={EMPTY_MESSAGES[filter].subtitle}
-            />
+            <View>
+              <EmptyState
+                icon={EMPTY_MESSAGES[filter].icon}
+                title={EMPTY_MESSAGES[filter].title}
+                subtitle={EMPTY_MESSAGES[filter].subtitle}
+              />
+              {filter === 'all' && (
+                <Pressable
+                  onPress={() => setImportOpen(true)}
+                  style={styles.importShortcut}
+                >
+                  <Text style={[styles.importShortcutText, { color: colors.primary }]}>
+                    {t('library.importShortcut')}
+                  </Text>
+                </Pressable>
+              )}
+              {filter === 'all' && bannerDismissed && (
+                <Pressable
+                  onPress={resetBanner}
+                  style={styles.showTipsBtn}
+                >
+                  <Text style={[styles.showTipsBtnText, { color: colors.mutedForeground }]}>
+                    {t('library.showTipsAgain')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           ) : null
         }
       />
@@ -238,4 +265,8 @@ const styles = StyleSheet.create({
   bannerImportBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   bannerImportText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   bannerDismiss: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  importShortcut: { alignItems: 'center', paddingBottom: 8, marginTop: -8 },
+  importShortcutText: { fontSize: 14, fontFamily: 'Inter_400Regular', textDecorationLine: 'underline' },
+  showTipsBtn: { alignItems: 'center', paddingBottom: 24 },
+  showTipsBtnText: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 });

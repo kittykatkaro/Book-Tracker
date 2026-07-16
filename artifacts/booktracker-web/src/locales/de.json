@@ -24,6 +24,8 @@
     "emptyAll": "Deine Bibliothek ist leer. Füge ein Buch hinzu, um deine Lesereise zu beginnen.",
     "emptyFiltered": "Du hast keine Bücher mit dem Status «{{status}}».",
     "addABook": "Buch hinzufügen",
+    "importShortcut": "oder aus Goodreads importieren",
+    "showTipsAgain": "Tipps erneut anzeigen",
     "statusReading": "Lese ich",
     "statusRead": "Gelesen",
     "statusWantToRead": "Möchte lesen"

@@ -24,6 +24,8 @@
     "emptyAll": "Your library is empty. Add a book to begin your tracking journey.",
     "emptyFiltered": "You don't have any books marked as {{status}}.",
     "addABook": "Add a Book",
+    "importShortcut": "or import from Goodreads",
+    "showTipsAgain": "Show tips again",
     "statusReading": "Reading",
     "statusRead": "Read",
     "statusWantToRead": "Want to Read"
