@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "xZjDWoqu4mDAMOM2C8FVC"
+uri = "file://marketing-strategy.md"
+type = "text"
+title = "BookTracker Marketing Strategy"
