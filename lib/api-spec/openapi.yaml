@@ -3,20 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Book Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: books
+    description: Book operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +25,136 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /books:
+    get:
+      operationId: listBooks
+      tags: [books]
+      summary: List all books
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [reading, read, want_to_read]
+      responses:
+        "200":
+          description: List of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+    post:
+      operationId: createBook
+      tags: [books]
+      summary: Add a new book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+  /books/isbn-lookup:
+    get:
+      operationId: lookupBookByIsbn
+      tags: [books]
+      summary: Lookup book details by ISBN via Open Library
+      parameters:
+        - name: isbn
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Book details found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookLookupResult"
+        "404":
+          description: Not found
+  /books/stats:
+    get:
+      operationId: getBookStats
+      tags: [books]
+      summary: Get reading statistics
+      responses:
+        "200":
+          description: Reading statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookStats"
+  /books/{id}:
+    get:
+      operationId: getBook
+      tags: [books]
+      summary: Get a book by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateBook
+      tags: [books]
+      summary: Update a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookPatch"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteBook
+      tags: [books]
+      summary: Delete a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +164,82 @@ components:
           type: string
       required:
         - status
-
+    Book:
+      type: object
+      required: [id, title, author, coverColor, status, dateAdded]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        author: { type: string }
+        coverColor: { type: string }
+        status:
+          type: string
+          enum: [reading, read, want_to_read]
+        rating: { type: ["integer", "null"] }
+        pages: { type: ["integer", "null"] }
+        currentPage: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        genre: { type: ["string", "null"] }
+        dateAdded: { type: string }
+        dateStarted: { type: ["string", "null"] }
+        dateFinished: { type: ["string", "null"] }
+    BookInput:
+      type: object
+      required: [title, author, status]
+      properties:
+        title: { type: string, minLength: 1 }
+        author: { type: string, minLength: 1 }
+        status:
+          type: string
+          enum: [reading, read, want_to_read]
+        rating: { type: ["integer", "null"] }
+        pages: { type: ["integer", "null"] }
+        currentPage: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        genre: { type: ["string", "null"] }
+    BookPatch:
+      type: object
+      properties:
+        title: { type: string }
+        author: { type: string }
+        status:
+          type: string
+          enum: [reading, read, want_to_read]
+        rating: { type: ["integer", "null"] }
+        pages: { type: ["integer", "null"] }
+        currentPage: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        genre: { type: ["string", "null"] }
+        dateStarted: { type: ["string", "null"] }
+        dateFinished: { type: ["string", "null"] }
+    BookStats:
+      type: object
+      required: [total, reading, read, wantToRead, readThisYear, totalPages, avgRating, topGenres]
+      properties:
+        total: { type: integer }
+        reading: { type: integer }
+        read: { type: integer }
+        wantToRead: { type: integer }
+        readThisYear: { type: integer }
+        totalPages: { type: integer }
+        avgRating: { type: ["number", "null"] }
+        topGenres:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenreCount"
+    GenreCount:
+      type: object
+      required: [genre, count]
+      properties:
+        genre: { type: string }
+        count: { type: integer }
+    BookLookupResult:
+      type: object
+      required: [title, author]
+      properties:
+        title: { type: string }
+        author: { type: string }
+        pages: { type: ["integer", "null"] }
+        genre: { type: ["string", "null"] }
+        coverUrl: { type: ["string", "null"] }
+        publishYear: { type: ["integer", "null"] }

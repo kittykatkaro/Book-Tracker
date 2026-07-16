@@ -1,5 +1,13 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useListBooks,
+  useCreateBook,
+  useUpdateBook,
+  useDeleteBook,
+  getListBooksQueryKey,
+  type Book as ApiBook,
+} from '@workspace/api-client-react';
 
 export type BookStatus = 'reading' | 'read' | 'want_to_read';
 
@@ -19,6 +27,24 @@ export interface Book {
   dateFinished?: string;
 }
 
+function toBook(b: ApiBook): Book {
+  return {
+    id: b.id,
+    title: b.title,
+    author: b.author,
+    coverColor: b.coverColor,
+    status: b.status as BookStatus,
+    rating: b.rating ?? undefined,
+    pages: b.pages ?? undefined,
+    currentPage: b.currentPage ?? undefined,
+    notes: b.notes ?? undefined,
+    genre: b.genre ?? undefined,
+    dateAdded: b.dateAdded,
+    dateStarted: b.dateStarted ?? undefined,
+    dateFinished: b.dateFinished ?? undefined,
+  };
+}
+
 interface BooksContextType {
   books: Book[];
   isLoading: boolean;
@@ -30,80 +56,76 @@ interface BooksContextType {
 
 const BooksContext = createContext<BooksContextType | null>(null);
 
-const STORAGE_KEY = '@booktracker_v1_books';
-
-const COVER_COLORS = [
-  '#2D6A4F', '#C8873F', '#5856D6', '#E55A4E', '#4A90D9',
-  '#8B5CF6', '#D4792A', '#1D7A7A', '#B5451B', '#4C7B58',
-];
-
-function generateId(): string {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-}
-
 export function BooksProvider({ children }: { children: React.ReactNode }) {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((stored) => {
-        if (stored) setBooks(JSON.parse(stored));
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data: apiBooks = [], isLoading } = useListBooks();
+  const books: Book[] = (apiBooks as ApiBook[]).map(toBook);
 
-  const persist = (updated: Book[]) => {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
-  };
+  const createMutation = useCreateBook();
+  const updateMutation = useUpdateBook();
+  const deleteMutation = useDeleteBook();
 
-  const addBook = useCallback((book: Omit<Book, 'id' | 'dateAdded' | 'coverColor'>) => {
-    const newBook: Book = {
-      ...book,
-      id: generateId(),
-      dateAdded: new Date().toISOString(),
-      coverColor: COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)],
-      ...(book.status === 'reading' ? { dateStarted: new Date().toISOString() } : {}),
-      ...(book.status === 'read'
-        ? { dateStarted: new Date().toISOString(), dateFinished: new Date().toISOString() }
-        : {}),
-    };
-    setBooks((prev) => {
-      const updated = [newBook, ...prev];
-      persist(updated);
-      return updated;
-    });
-  }, []);
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() });
+  }, [queryClient]);
 
-  const updateBook = useCallback((id: string, updates: Partial<Book>) => {
-    setBooks((prev) => {
-      const updated = prev.map((b) => {
-        if (b.id !== id) return b;
-        const next = { ...b, ...updates };
-        if (updates.status === 'reading' && !b.dateStarted) {
-          next.dateStarted = new Date().toISOString();
-        }
-        if (updates.status === 'read') {
-          if (!next.dateStarted) next.dateStarted = new Date().toISOString();
-          if (!b.dateFinished) next.dateFinished = new Date().toISOString();
-        }
-        return next;
-      });
-      persist(updated);
-      return updated;
-    });
-  }, []);
+  const addBook = useCallback(
+    (book: Omit<Book, 'id' | 'dateAdded' | 'coverColor'>) => {
+      createMutation.mutate(
+        {
+          data: {
+            title: book.title,
+            author: book.author,
+            status: book.status,
+            rating: book.rating ?? null,
+            pages: book.pages ?? null,
+            currentPage: book.currentPage ?? null,
+            notes: book.notes ?? null,
+            genre: book.genre ?? null,
+          },
+        },
+        { onSuccess: invalidate },
+      );
+    },
+    [createMutation, invalidate],
+  );
 
-  const deleteBook = useCallback((id: string) => {
-    setBooks((prev) => {
-      const updated = prev.filter((b) => b.id !== id);
-      persist(updated);
-      return updated;
-    });
-  }, []);
+  const updateBook = useCallback(
+    (id: string, updates: Partial<Book>) => {
+      updateMutation.mutate(
+        {
+          id,
+          data: {
+            ...(updates.title !== undefined && { title: updates.title }),
+            ...(updates.author !== undefined && { author: updates.author }),
+            ...(updates.status !== undefined && { status: updates.status }),
+            ...('rating' in updates && { rating: updates.rating ?? null }),
+            ...('pages' in updates && { pages: updates.pages ?? null }),
+            ...('currentPage' in updates && { currentPage: updates.currentPage ?? null }),
+            ...('notes' in updates && { notes: updates.notes ?? null }),
+            ...('genre' in updates && { genre: updates.genre ?? null }),
+            ...('dateStarted' in updates && { dateStarted: updates.dateStarted ?? null }),
+            ...('dateFinished' in updates && { dateFinished: updates.dateFinished ?? null }),
+          },
+        },
+        { onSuccess: invalidate },
+      );
+    },
+    [updateMutation, invalidate],
+  );
 
-  const getBook = useCallback((id: string) => books.find((b) => b.id === id), [books]);
+  const deleteBook = useCallback(
+    (id: string) => {
+      deleteMutation.mutate({ id }, { onSuccess: invalidate });
+    },
+    [deleteMutation, invalidate],
+  );
+
+  const getBook = useCallback(
+    (id: string) => books.find((b) => b.id === id),
+    [books],
+  );
 
   return (
     <BooksContext.Provider value={{ books, isLoading, addBook, updateBook, deleteBook, getBook }}>

@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Book Tracker Web"
+version = "1.0.0"
+id = "artifacts/booktracker-web"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18776
+
+[services.development]
+run = "pnpm --filter @workspace/booktracker-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/booktracker-web", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/booktracker-web/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18776"
+BASE_PATH = "/"

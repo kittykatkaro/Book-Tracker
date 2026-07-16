@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#2D6A4F"/>
+  <!-- Left page -->
+  <path d="M11 15a2 2 0 0 1 2-2h9v22h-9a2 2 0 0 1-2-2V15z" fill="white" fill-opacity="0.92"/>
+  <!-- Right page -->
+  <path d="M37 15a2 2 0 0 0-2-2h-9v22h9a2 2 0 0 0 2-2V15z" fill="white" fill-opacity="0.70"/>
+  <!-- Spine -->
+  <rect x="23" y="13" width="2" height="22" fill="#2D6A4F" fill-opacity="0.3"/>
+  <!-- Lines on left page -->
+  <rect x="14" y="19" width="7" height="1.5" rx="0.75" fill="#C8873F" fill-opacity="0.85"/>
+  <rect x="14" y="23" width="7" height="1.5" rx="0.75" fill="#C8873F" fill-opacity="0.85"/>
+  <rect x="14" y="27" width="5" height="1.5" rx="0.75" fill="#C8873F" fill-opacity="0.85"/>
+  <!-- Bottom bar -->
+  <rect x="11" y="35" width="26" height="2" rx="1" fill="white" fill-opacity="0.4"/>
+</svg>

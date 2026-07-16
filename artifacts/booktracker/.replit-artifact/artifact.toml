@@ -1,5 +1,5 @@
 kind = "mobile"
-previewPath = "/"
+previewPath = "/mobile"
 title = "Book Tracker"
 version = "1.0.0"
 id = "artifacts/booktracker"
@@ -8,7 +8,7 @@ router = "expo-domain"
 [[services]]
 name = "expo"
 ensurePreviewReachable = "/status"
-paths = [ "/" ]
+paths = [ "/mobile" ]
 localPort = 25581
 
 [services.development]
@@ -20,4 +20,4 @@ run = [ "pnpm", "--filter", "@workspace/booktracker", "run", "serve" ]
 
 [services.env]
 PORT = "25581"
-BASE_PATH = "/"
+BASE_PATH = "/mobile"
