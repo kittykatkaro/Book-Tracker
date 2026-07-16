@@ -1,7 +1,8 @@
 # BookTracker — Marketing Strategy
 
-> **Document status:** Draft v1.0 · July 2026  
-> **Audience:** Founders, product leads, growth team
+> **Document status:** Draft v1.1 · July 2026  
+> **Audience:** Founders, product leads, growth team  
+> **Latest update:** Dark mode (web + mobile) and bulk book-set ISBN import added to positioning and launch assets.
 
 ---
 
@@ -11,7 +12,9 @@ BookTracker is a cross-platform reading companion — available as a web app and
 
 - **Frictionless onboarding:** Import an entire reading history from Goodreads or a spreadsheet in one step; covers and metadata fill in automatically.
 - **Barcode & ISBN lookup:** Scan the back of any book to add it instantly, no typing required.
+- **Book-set import:** Paste or scan a whole box-set of ISBNs at once, then mark each volume individually or bulk-update them all.
 - **Book clubs built-in:** Private, invite-only clubs with shared reading lists and threaded discussion — no third-party app needed.
+- **Dark mode everywhere:** Light, dark, and system themes on both web and mobile, with a consistent, comfortable reading experience at any hour.
 - **Multilingual from day one:** Full English and German UI with in-app language switching.
 
 ---
@@ -48,7 +51,9 @@ BookTracker is a cross-platform reading companion — available as a web app and
 | Mobile app | ✓ | ✓ | ✓ |
 | Import from Goodreads | ✓ | ✓ | ✓ |
 | Barcode scan to add | ✗ | ✗ | ✓ |
+| Bulk ISBN / book-set import | ✗ | ✗ | ✓ |
 | Private book clubs | ✗ | ✗ | ✓ |
+| Dark mode + system theme | ✗ | ✗ | ✓ |
 | No social feed/ads | ✗ | ✓ | ✓ |
 | Multilingual | ✗ | ✗ | ✓ |
 | Owned by Amazon | ✓ | ✗ | ✗ |
@@ -70,6 +75,12 @@ BookTracker is a cross-platform reading companion — available as a web app and
 
 **For the Commuter/Casual Reader:**
 > "Add any book in seconds. Know what you've read, remember what you want to read."
+
+**For the Collector / Box-Set Reader:**
+> "Scan an entire box set in one go. Every volume tracked, with its own status, in under a minute."
+
+**For the Night Reader:**
+> "Light, dark, or follow your system — your library looks right at any hour, on any screen."
 
 ### Tagline Options (test and iterate)
 1. *Every book you've ever loved, in one place.*
@@ -201,7 +212,7 @@ BookTracker ships with German support from launch — a deliberate head start in
 
 - [ ] Finalize tagline via 2-week A/B test on landing page
 - [ ] Write 4 SEO blog posts before launch (Goodreads alternative, book tracking, book club apps, reading stats)
-- [ ] Record 3 demo videos: import flow, club creation, stats overview
+- [ ] Record 5 demo videos: import flow, club creation, stats overview, book-set ISBN import, dark mode comparison
 - [ ] Set up ProductHunt page; brief 50 hunters for launch day upvotes
 - [ ] Identify 10 BookTok creators; draft outreach email
 - [ ] Build "Switch from Goodreads" dedicated landing page
