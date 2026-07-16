@@ -1,13 +1,15 @@
 import { useListBooks } from "@workspace/api-client-react"
 import { Book } from "@workspace/api-client-react/src/generated/api.schemas"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Star, BookOpen } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Star, BookOpen, Upload, Sparkles } from "lucide-react"
 import { Link } from "wouter"
 import { useState } from "react"
+import { ImportBooksDialog } from "@/components/import-books-dialog"
 
 function BookCard({ book }: { book: Book }) {
   const initial = book.title.charAt(0).toUpperCase()
@@ -78,6 +80,9 @@ function SkeletonGrid() {
 
 export function Library() {
   const [tab, setTab] = useState<'all' | 'reading' | 'want_to_read' | 'read'>('all')
+  const [importOpen, setImportOpen] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+
   const { data: books, isLoading } = useListBooks(
     tab === 'all' ? undefined : { status: tab }
   )
@@ -89,6 +94,8 @@ export function Library() {
     read: useListBooks({ status: 'read' }).data?.length || 0,
   }
 
+  const isNewUser = !isLoading && counts.all === 0 && !bannerDismissed
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -96,10 +103,50 @@ export function Library() {
           <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">Your Library</h1>
           <p className="text-muted-foreground mt-1">A curated collection of your literary journey.</p>
         </div>
-        <div className="text-sm font-medium text-muted-foreground bg-white/50 dark:bg-black/10 px-3 py-1 rounded-full border">
-          {counts.all} Books Total
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportOpen(true)}
+            className="gap-1.5 rounded-full border-border/60"
+            data-testid="button-import-books"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          <div className="text-sm font-medium text-muted-foreground bg-white/50 dark:bg-black/10 px-3 py-1 rounded-full border">
+            {counts.all} Books Total
+          </div>
         </div>
       </div>
+
+      {/* Onboarding banner — shown only to new users with an empty library */}
+      {isNewUser && (
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <div className="w-10 h-10 shrink-0 rounded-full bg-primary/15 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-serif font-semibold text-foreground">Welcome to your library!</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Add books one by one, or import your entire reading history from Goodreads, a spreadsheet, or a document.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={() => setImportOpen(true)} className="gap-1.5 rounded-full">
+              <Upload className="h-3.5 w-3.5" /> Import library
+            </Button>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ImportBooksDialog open={importOpen} onClose={() => setImportOpen(false)} />
 
       <Tabs defaultValue="all" onValueChange={(v) => setTab(v as any)} className="w-full">
         <TabsList className="bg-transparent border-b rounded-none w-full justify-start h-auto p-0 gap-6">

@@ -13,6 +13,7 @@ import { useColors } from '@/hooks/useColors';
 import { useBooks } from '@/context/BooksContext';
 import { BookCard } from '@/components/BookCard';
 import { EmptyState } from '@/components/EmptyState';
+import { ImportModal } from '@/components/ImportModal';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -38,6 +39,7 @@ export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const { books, isLoading } = useBooks();
   const [filter, setFilter] = useState<Filter>('all');
+  const [importOpen, setImportOpen] = useState(false);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return books;
@@ -76,13 +78,23 @@ export default function LibraryScreen() {
             {books.length} {books.length === 1 ? 'book' : 'books'}
           </Text>
         </View>
-        <Pressable
-          onPress={handleAdd}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-        >
-          <Feather name="plus" size={20} color={colors.primaryForeground} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => setImportOpen(true)}
+            style={[styles.importBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+          >
+            <Feather name="upload" size={16} color={colors.mutedForeground} />
+          </Pressable>
+          <Pressable
+            onPress={handleAdd}
+            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          >
+            <Feather name="plus" size={20} color={colors.primaryForeground} />
+          </Pressable>
+        </View>
       </View>
+
+      <ImportModal visible={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Filter tabs */}
       <ScrollView
@@ -179,6 +191,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  importBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addBtn: {
     width: 40,
