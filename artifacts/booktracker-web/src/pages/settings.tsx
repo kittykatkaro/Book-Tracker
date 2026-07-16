@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react"
 import { useUser, useClerk } from "@clerk/react"
 import { useTranslation } from "react-i18next"
+import { useTheme } from "next-themes"
 import { setLanguage } from "@/i18n"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Globe, Bell, LogOut, RotateCcw, Check } from "lucide-react"
+import { Sparkles, Globe, Bell, LogOut, RotateCcw, Check, Sun, Moon, Monitor } from "lucide-react"
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "")
 
@@ -13,6 +14,7 @@ export function Settings() {
   const { t, i18n } = useTranslation()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const { theme, setTheme, resolvedTheme } = useTheme()
 
   const storageKey = user?.id ? `banner_dismissed_${user.id}` : null
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -85,6 +87,59 @@ export function Settings() {
                 {t("settings.bannerVisible")}
               </Badge>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Theme */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              {resolvedTheme === "dark" ? (
+                <Moon className="h-4 w-4 text-primary" />
+              ) : (
+                <Sun className="h-4 w-4 text-primary" />
+              )}
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">{t("settings.themeTitle")}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("settings.themeDesc")}</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={theme === "light" ? "default" : "outline"}
+              onClick={() => setTheme("light")}
+              className="rounded-full"
+              data-testid="button-theme-light"
+            >
+              <Sun className="h-3.5 w-3.5 mr-1.5" />
+              {t("settings.themeLight")}
+            </Button>
+            <Button
+              size="sm"
+              variant={theme === "dark" ? "default" : "outline"}
+              onClick={() => setTheme("dark")}
+              className="rounded-full"
+              data-testid="button-theme-dark"
+            >
+              <Moon className="h-3.5 w-3.5 mr-1.5" />
+              {t("settings.themeDark")}
+            </Button>
+            <Button
+              size="sm"
+              variant={theme === "system" || (!theme) ? "default" : "outline"}
+              onClick={() => setTheme("system")}
+              className="rounded-full"
+              data-testid="button-theme-system"
+            >
+              <Monitor className="h-3.5 w-3.5 mr-1.5" />
+              {t("settings.themeSystem")}
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ import { Library, BarChart2, Plus, LogOut, User, Users, Settings } from "lucide-
 import { useUser, useClerk } from "@clerk/react";
 import { useTranslation } from "react-i18next";
 import { setLanguage } from "@/i18n";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -78,6 +79,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <LangToggle />
 
             <Link

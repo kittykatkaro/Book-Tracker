@@ -5,6 +5,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { BooksProvider } from '@/context/BooksContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { setBaseUrl, setAuthTokenGetter } from '@workspace/api-client-react';
 import {
   Inter_400Regular,
@@ -97,13 +98,15 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
-              <BooksProvider>
-                <GestureHandlerRootView>
-                  <KeyboardProvider>
-                    <InitialLayout />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </BooksProvider>
+              <ThemeProvider>
+                <BooksProvider>
+                  <GestureHandlerRootView>
+                    <KeyboardProvider>
+                      <InitialLayout />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </BooksProvider>
+              </ThemeProvider>
             </QueryClientProvider>
           </ErrorBoundary>
         </SafeAreaProvider>

@@ -13,6 +13,7 @@ import { useUser, useClerk } from '@clerk/expo';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '@/i18n';
 import { useColors } from '@/hooks/useColors';
+import { useTheme } from '@/context/ThemeContext';
 import { Feather } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
@@ -21,6 +22,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { theme, setTheme } = useTheme();
 
   const bannerKey = user?.id ? `banner_dismissed_${user.id}` : null;
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -111,6 +113,54 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             )}
+          </View>
+        </View>
+
+        {/* Theme section */}
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.iconCircle, { backgroundColor: colors.primary + '18' }]}>
+              <Feather name={theme === 'dark' ? 'moon' : 'sun'} size={16} color={colors.primary} />
+            </View>
+            <View style={styles.sectionHeaderText}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                {t('settings.themeTitle')}
+              </Text>
+              <Text style={[styles.sectionDesc, { color: colors.mutedForeground }]}>
+                {t('settings.themeDesc')}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.row, { borderTopColor: colors.border }]}>
+            <View style={styles.langButtons}>
+              {(['light', 'dark', 'system'] as const).map((mode) => {
+                const active = theme === mode;
+                const labelKey = mode === 'system' ? 'settings.themeSystem' : `settings.theme${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
+                return (
+                  <Pressable
+                    key={mode}
+                    onPress={() => setTheme(mode)}
+                    style={[
+                      styles.langBtn,
+                      {
+                        backgroundColor: active ? colors.primary : colors.secondary,
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.langBtnText,
+                        { color: active ? colors.primaryForeground : colors.mutedForeground },
+                      ]}
+                    >
+                      {t(labelKey)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </View>
 

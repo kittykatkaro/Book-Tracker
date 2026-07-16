@@ -4,10 +4,12 @@ import {
 } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { useTheme } from "next-themes";
 import { Switch, Route, useLocation, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/layout";
 import { Library } from "@/pages/library";
 import { AddBook } from "@/pages/add-book";
@@ -44,54 +46,76 @@ function stripBase(path: string): string {
 // Appearance — warm literary palette
 // ---------------------------------------------------------------------------
 
-const appearance = {
-  theme: shadcn,
-  cssLayerName: "clerk",
-  options: {
-    logoPlacement: "inside" as const,
-    logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
-  },
-  variables: {
-    colorPrimary: "hsl(152, 39%, 30%)",
-    colorForeground: "hsl(30, 15%, 15%)",
-    colorMutedForeground: "hsl(30, 8%, 50%)",
-    colorDanger: "hsl(0, 72%, 51%)",
-    colorBackground: "hsl(36, 40%, 95%)",
-    colorInput: "#ffffff",
-    colorInputForeground: "hsl(30, 15%, 15%)",
-    colorNeutral: "hsl(30, 12%, 72%)",
-    fontFamily: "'Inter', sans-serif",
-    borderRadius: "0.75rem",
-  },
-  elements: {
-    rootBox: "w-full flex justify-center",
-    cardBox: "bg-[hsl(36,40%,95%)] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl shadow-black/8",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "font-serif text-[hsl(30,15%,15%)] text-2xl",
-    headerSubtitle: "text-[hsl(30,8%,50%)] text-sm",
-    socialButtonsBlockButtonText: "text-[hsl(30,15%,15%)] font-medium",
-    formFieldLabel: "text-[hsl(30,15%,15%)] font-medium text-sm",
-    footerActionLink: "text-[hsl(152,39%,30%)] font-semibold hover:text-[hsl(152,39%,20%)]",
-    footerActionText: "text-[hsl(30,8%,50%)]",
-    dividerText: "text-[hsl(30,8%,50%)] text-xs",
-    identityPreviewEditButton: "text-[hsl(152,39%,30%)]",
-    formFieldSuccessText: "text-[hsl(152,39%,30%)]",
-    alertText: "text-[hsl(30,15%,15%)]",
-    logoBox: "justify-center pt-2",
-    logoImage: "h-10 w-10",
-    socialButtonsBlockButton: "border border-[hsl(30,12%,72%)] bg-white hover:bg-[hsl(36,30%,90%)] transition-colors",
-    formButtonPrimary: "bg-[hsl(152,39%,30%)] hover:bg-[hsl(152,39%,22%)] text-white font-semibold rounded-full transition-colors",
-    formFieldInput: "bg-white border border-[hsl(30,12%,72%)] text-[hsl(30,15%,15%)] rounded-lg",
-    footerAction: "border-t border-[hsl(30,12%,72%)]/40",
-    dividerLine: "bg-[hsl(30,12%,72%)]/40",
-    alert: "border border-[hsl(0,72%,51%)]/20 bg-[hsl(0,72%,51%)]/5 rounded-lg",
-    otpCodeFieldInput: "border border-[hsl(30,12%,72%)] bg-white rounded-lg text-[hsl(30,15%,15%)]",
-    formFieldRow: "",
-    main: "",
-  },
-};
+function getClerkAppearance(isDark: boolean) {
+  const p = isDark
+    ? {
+        primary: "hsl(152, 39%, 52%)",
+        foreground: "hsl(240, 14%, 96%)",
+        mutedForeground: "hsl(240, 1%, 57%)",
+        background: "hsl(240, 2%, 11%)",
+        inputBg: "hsl(240, 2%, 18%)",
+        border: "hsl(240, 1%, 22%)",
+        neutral: "hsl(240, 1%, 57%)",
+      }
+    : {
+        primary: "hsl(152, 39%, 30%)",
+        foreground: "hsl(30, 15%, 15%)",
+        mutedForeground: "hsl(30, 8%, 50%)",
+        background: "hsl(36, 40%, 95%)",
+        inputBg: "#ffffff",
+        border: "hsl(30, 12%, 72%)",
+        neutral: "hsl(30, 12%, 72%)",
+      };
+
+  return {
+    theme: shadcn,
+    cssLayerName: "clerk" as const,
+    options: {
+      logoPlacement: "inside" as const,
+      logoLinkUrl: basePath || "/",
+      logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    },
+    variables: {
+      colorPrimary: p.primary,
+      colorForeground: p.foreground,
+      colorMutedForeground: p.mutedForeground,
+      colorDanger: "hsl(0, 72%, 51%)",
+      colorBackground: p.background,
+      colorInput: p.inputBg,
+      colorInputForeground: p.foreground,
+      colorNeutral: p.neutral,
+      fontFamily: "'Inter', sans-serif",
+      borderRadius: "0.75rem",
+    },
+    elements: {
+      rootBox: "w-full flex justify-center",
+      cardBox: `rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl shadow-black/8 ${isDark ? "bg-[hsl(240,2%,11%)]" : "bg-[hsl(36,40%,95%)]"}`,
+      card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+      footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+      headerTitle: `font-serif text-2xl ${isDark ? "text-[hsl(240,14%,96%)]" : "text-[hsl(30,15%,15%)]"}`,
+      headerSubtitle: `text-sm ${isDark ? "text-[hsl(240,1%,57%)]" : "text-[hsl(30,8%,50%)]"}`,
+      socialButtonsBlockButtonText: `font-medium ${isDark ? "text-[hsl(240,14%,96%)]" : "text-[hsl(30,15%,15%)]"}`,
+      formFieldLabel: `font-medium text-sm ${isDark ? "text-[hsl(240,14%,96%)]" : "text-[hsl(30,15%,15%)]"}`,
+      footerActionLink: `font-semibold ${isDark ? "text-[hsl(152,39%,52%)] hover:text-[hsl(152,39%,60%)]" : "text-[hsl(152,39%,30%)] hover:text-[hsl(152,39%,20%)]"}`,
+      footerActionText: isDark ? "text-[hsl(240,1%,57%)]" : "text-[hsl(30,8%,50%)]",
+      dividerText: `text-xs ${isDark ? "text-[hsl(240,1%,57%)]" : "text-[hsl(30,8%,50%)]"}`,
+      identityPreviewEditButton: isDark ? "text-[hsl(152,39%,52%)]" : "text-[hsl(152,39%,30%)]",
+      formFieldSuccessText: isDark ? "text-[hsl(152,39%,52%)]" : "text-[hsl(152,39%,30%)]",
+      alertText: isDark ? "text-[hsl(240,14%,96%)]" : "text-[hsl(30,15%,15%)]",
+      logoBox: "justify-center pt-2",
+      logoImage: "h-10 w-10",
+      socialButtonsBlockButton: `border transition-colors ${isDark ? "border-[hsl(240,1%,22%)] bg-[hsl(240,2%,18%)] hover:bg-[hsl(240,2%,25%)]" : "border-[hsl(30,12%,72%)] bg-white hover:bg-[hsl(36,30%,90%)]"}`,
+      formButtonPrimary: `font-semibold rounded-full transition-colors ${isDark ? "bg-[hsl(152,39%,52%)] hover:bg-[hsl(152,39%,60%)] text-[hsl(240,2%,11%)]" : "bg-[hsl(152,39%,30%)] hover:bg-[hsl(152,39%,22%)] text-white"}`,
+      formFieldInput: `rounded-lg border ${isDark ? "bg-[hsl(240,2%,18%)] border-[hsl(240,1%,22%)] text-[hsl(240,14%,96%)]" : "bg-white border-[hsl(30,12%,72%)] text-[hsl(30,15%,15%)]"}`,
+      footerAction: `border-t ${isDark ? "border-[hsl(240,1%,22%)]/40" : "border-[hsl(30,12%,72%)]/40"}`,
+      dividerLine: isDark ? "bg-[hsl(240,1%,22%)]/40" : "bg-[hsl(30,12%,72%)]/40",
+      alert: "border rounded-lg border-[hsl(0,72%,51%)]/20 bg-[hsl(0,72%,51%)]/5",
+      otpCodeFieldInput: `rounded-lg border ${isDark ? "bg-[hsl(240,2%,18%)] border-[hsl(240,1%,22%)] text-[hsl(240,14%,96%)]" : "bg-white border-[hsl(30,12%,72%)] text-[hsl(30,15%,15%)]"}`,
+      formFieldRow: "",
+      main: "",
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Query client
@@ -259,12 +283,14 @@ function Router() {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   return (
     <ClerkProvider
       publishableKey={clerkPubKey}
       proxyUrl={clerkProxyUrl}
-      appearance={appearance}
+      appearance={getClerkAppearance(isDark)}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       localization={{
@@ -297,8 +323,10 @@ function ClerkProviderWithRoutes() {
 
 export default function App() {
   return (
-    <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
-    </WouterRouter>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <WouterRouter base={basePath}>
+        <ClerkProviderWithRoutes />
+      </WouterRouter>
+    </ThemeProvider>
   );
 }

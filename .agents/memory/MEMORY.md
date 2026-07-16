@@ -1,2 +1,3 @@
 - [Clerk auth wiring](clerk-auth-wiring.md) — Clerk provisioned; proxy+middleware in api-server, ClerkProvider in both web and Expo; books scoped per userId.
 - [Book clubs feature](book-clubs-feature.md) — DB schema, API routes, web pages, mobile screens all implemented; key wiring decisions documented.
+- [Dark mode implementation](darkmode-implementation.md) — Web uses next-themes (class strategy); Expo uses ThemeContext + AsyncStorage; Clerk appearance is resolved dynamically.
