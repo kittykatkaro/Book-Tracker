@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Library, BarChart2, Plus, LogOut, User, Users } from "lucide-react";
+import { Library, BarChart2, Plus, LogOut, User, Users, Settings } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useTranslation } from "react-i18next";
 import { setLanguage } from "@/i18n";
@@ -67,6 +67,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
               >
                 {t("nav.stats")}
               </Link>
+              <Link
+                href="/settings"
+                className={`transition-colors ${location === "/settings" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="link-nav-settings"
+              >
+                {t("nav.settings")}
+              </Link>
             </nav>
           </div>
 
@@ -132,14 +139,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <BarChart2 className="h-5 w-5" />
           <span>{t("nav.stats")}</span>
         </Link>
-        <button
-          onClick={() => signOut({ redirectUrl: basePath || "/" })}
-          className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors text-muted-foreground`}
-          data-testid="button-mobile-sign-out"
+        <Link
+          href="/settings"
+          className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${location === "/settings" ? "text-primary" : "text-muted-foreground"}`}
+          data-testid="link-mobile-settings"
         >
-          <LogOut className="h-5 w-5" />
-          <span>{t("nav.signOut")}</span>
-        </button>
+          <Settings className="h-5 w-5" />
+          <span>{t("nav.settings")}</span>
+        </Link>
       </div>
     </div>
   );

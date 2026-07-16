@@ -15,6 +15,7 @@ import { BookDetail } from "@/pages/book-detail";
 import { Stats } from "@/pages/stats";
 import { Clubs } from "@/pages/clubs";
 import { ClubDetail } from "@/pages/club-detail";
+import { Settings } from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 // ---------------------------------------------------------------------------
@@ -246,6 +247,9 @@ function Router() {
       </Route>
       <Route path="/clubs/:id">
         {() => <ProtectedPage><ClubDetail /></ProtectedPage>}
+      </Route>
+      <Route path="/settings">
+        <ProtectedPage><Settings /></ProtectedPage>
       </Route>
 
       <Route component={NotFound} />

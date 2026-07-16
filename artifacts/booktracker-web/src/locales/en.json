@@ -3,7 +3,25 @@
     "books": "Books",
     "clubs": "Clubs",
     "stats": "Stats",
+    "settings": "Settings",
     "addBook": "Add Book",
+    "signOut": "Sign out"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your preferences and account.",
+    "onboardingTitle": "Onboarding",
+    "onboardingDesc": "Control the welcome hints shown in your library.",
+    "welcomeBanner": "Welcome banner",
+    "welcomeBannerDesc": "Show the getting-started tips on the library page.",
+    "resetBanner": "Show again",
+    "resetDone": "Done!",
+    "bannerVisible": "Visible",
+    "languageTitle": "Language",
+    "languageDesc": "Choose your preferred display language.",
+    "notificationsTitle": "Notifications",
+    "notificationsDesc": "Reading reminders and club activity alerts.",
+    "comingSoon": "Coming soon",
     "signOut": "Sign out"
   },
   "library": {

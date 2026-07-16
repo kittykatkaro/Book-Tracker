@@ -183,6 +183,23 @@
     "verify": "E-Mail bestätigen",
     "resend": "Code erneut senden"
   },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Präferenzen & Konto",
+    "onboardingTitle": "Einführung",
+    "onboardingDesc": "Steuere die Willkommenshinweise in deiner Bibliothek.",
+    "welcomeBanner": "Willkommensbanner",
+    "welcomeBannerDesc": "Zeige Erste-Schritte-Tipps auf dem Bibliotheksbildschirm.",
+    "resetBanner": "Erneut anzeigen",
+    "resetDone": "Fertig!",
+    "bannerVisible": "Sichtbar",
+    "languageTitle": "Sprache",
+    "languageDesc": "Wähle deine bevorzugte Anzeigesprache.",
+    "notificationsTitle": "Benachrichtigungen",
+    "notificationsDesc": "Leseerinnerungen und Club-Aktivitätsmeldungen.",
+    "comingSoon": "Demnächst",
+    "signOut": "Abmelden"
+  },
   "lang": {
     "switchTo": "English"
   }

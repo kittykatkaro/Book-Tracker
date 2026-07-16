@@ -3,7 +3,25 @@
     "books": "Bücher",
     "clubs": "Clubs",
     "stats": "Statistiken",
+    "settings": "Einstellungen",
     "addBook": "Buch hinzufügen",
+    "signOut": "Abmelden"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Verwalte deine Einstellungen und dein Konto.",
+    "onboardingTitle": "Einführung",
+    "onboardingDesc": "Steuere die Willkommenshinweise in deiner Bibliothek.",
+    "welcomeBanner": "Willkommensbanner",
+    "welcomeBannerDesc": "Zeige die Erste-Schritte-Tipps auf der Bibliotheksseite.",
+    "resetBanner": "Erneut anzeigen",
+    "resetDone": "Fertig!",
+    "bannerVisible": "Sichtbar",
+    "languageTitle": "Sprache",
+    "languageDesc": "Wähle deine bevorzugte Anzeigesprache.",
+    "notificationsTitle": "Benachrichtigungen",
+    "notificationsDesc": "Leseerinnerungen und Club-Aktivitätsmeldungen.",
+    "comingSoon": "Demnächst",
     "signOut": "Abmelden"
   },
   "library": {
