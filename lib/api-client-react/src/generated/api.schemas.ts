@@ -114,6 +114,10 @@ export interface BookStats {
   topGenres: GenreCount[];
 }
 
+export interface EnrichAllResult {
+  enriching: number;
+}
+
 export interface BookLookupResult {
   title: string;
   author: string;

@@ -77,6 +77,14 @@ export const CreateBookResponse = zod.object({
 
 
 /**
+ * @summary Enrich all books missing page counts or genres from OpenLibrary
+ */
+export const EnrichAllBooksResponse = zod.object({
+  "enriching": zod.number()
+})
+
+
+/**
  * @summary Lookup book details by ISBN via Open Library
  */
 export const LookupBookByIsbnQueryParams = zod.object({

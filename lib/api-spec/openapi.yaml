@@ -63,6 +63,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Book"
+  /books/enrich-all:
+    post:
+      operationId: enrichAllBooks
+      tags: [books]
+      summary: Enrich all books missing page counts or genres from OpenLibrary
+      responses:
+        "200":
+          description: Number of books queued for enrichment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrichAllResult"
   /books/isbn-lookup:
     get:
       operationId: lookupBookByIsbn
@@ -233,6 +245,11 @@ components:
       properties:
         genre: { type: string }
         count: { type: integer }
+    EnrichAllResult:
+      type: object
+      required: [enriching]
+      properties:
+        enriching: { type: integer }
     BookLookupResult:
       type: object
       required: [title, author]

@@ -8,6 +8,7 @@ import { getAuth } from "@clerk/express";
 import multer from "multer";
 import { db, booksTable } from "@workspace/db";
 import { parseCSV, parseDOCX, parsePDF, type ParsedBook } from "../import-parsers.js";
+import { lookupByTitleAuthor, enrichBooksInBackground as enrichBooks } from "../lib/enrich.js";
 
 const router = Router();
 
@@ -133,72 +134,8 @@ router.post("/parse", requireAuth, async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // Background enrichment — fire-and-forget after confirm
+// (lookupByTitleAuthor and enrichBooksInBackground are in ../lib/enrich.ts)
 // ---------------------------------------------------------------------------
-
-/**
- * Look up a book by title + author on OpenLibrary's search API.
- * Returns { pages, genre } with whichever fields were found, or null on failure.
- */
-async function lookupByTitleAuthor(
-  title: string,
-  author: string,
-): Promise<{ pages: number | null; genre: string | null } | null> {
-  try {
-    const params = new URLSearchParams({
-      title,
-      author,
-      limit: "1",
-      fields: "number_of_pages_median,subject",
-    });
-    const url = `https://openlibrary.org/search.json?${params.toString()}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      docs?: { number_of_pages_median?: number; subject?: string[] }[];
-    };
-    const doc = data.docs?.[0];
-    if (!doc) return null;
-    return {
-      pages: doc.number_of_pages_median ?? null,
-      genre: doc.subject?.[0] ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * For each inserted book that is missing pages or genre, query OpenLibrary and
- * patch the DB row. Runs entirely in the background — errors are swallowed.
- */
-async function enrichBooksInBackground(
-  bookIds: { id: string; title: string; author: string; hasMissingFields: boolean }[],
-): Promise<void> {
-  const toEnrich = bookIds.filter((b) => b.hasMissingFields);
-  for (const book of toEnrich) {
-    try {
-      const result = await lookupByTitleAuthor(book.title, book.author);
-      if (!result) continue;
-      if (!result.pages && !result.genre) continue;
-
-      // Only update fields that are still null in the DB
-      const [current] = await db
-        .select({ pages: booksTable.pages, genre: booksTable.genre })
-        .from(booksTable)
-        .where(eq(booksTable.id, book.id));
-      if (!current) continue;
-
-      const patch: Partial<typeof booksTable.$inferInsert> = {};
-      if (!current.pages && result.pages) patch.pages = result.pages;
-      if (!current.genre && result.genre) patch.genre = result.genre;
-      if (Object.keys(patch).length === 0) continue;
-
-      await db.update(booksTable).set(patch).where(eq(booksTable.id, book.id));
-    } catch {
-      // swallow — enrichment is best-effort
-    }
-  }
-}
 
 // ---------------------------------------------------------------------------
 // POST /import/confirm
@@ -272,7 +209,7 @@ router.post("/confirm", requireAuth, async (req, res) => {
 
   // Kick off enrichment in the background — do NOT await
   if (enrichingCount > 0) {
-    enrichBooksInBackground(insertedForEnrichment).catch(() => {/* swallow */});
+    enrichBooks(insertedForEnrichment.filter((b) => b.hasMissingFields)).catch(() => {/* swallow */});
   }
 
   return res.json({ imported, skipped, enriching: enrichingCount });

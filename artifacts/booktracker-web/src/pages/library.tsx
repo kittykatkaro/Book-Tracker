@@ -1,12 +1,12 @@
-import { useListBooks, getListBooksQueryKey } from "@workspace/api-client-react"
-import { Book } from "@workspace/api-client-react/src/generated/api.schemas"
+import { useListBooks, getListBooksQueryKey, useEnrichAllBooks } from "@workspace/api-client-react"
+import type { Book } from "@workspace/api-client-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { Star, BookOpen, Upload, Sparkles, Loader2 } from "lucide-react"
+import { Star, BookOpen, Upload, Sparkles, Loader2, Wand2 } from "lucide-react"
 import { Link } from "wouter"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { ImportBooksDialog } from "@/components/import-books-dialog"
@@ -91,6 +91,21 @@ export function Library() {
   const [enrichingCount, setEnrichingCount] = useState(0)
   const enrichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const { mutate: triggerEnrichAll, isPending: enrichAllPending } = useEnrichAllBooks({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.enriching > 0) {
+          setEnrichingCount((prev) => prev + data.enriching)
+          if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
+          enrichTimerRef.current = setTimeout(() => {
+            setEnrichingCount(0)
+            qc.invalidateQueries({ queryKey: getListBooksQueryKey() })
+          }, 8000)
+        }
+      },
+    },
+  })
+
   const storageKey = user?.id ? `banner_dismissed_${user.id}` : null
   const [bannerDismissed, setBannerDismissed] = useState(() => {
     if (!storageKey) return false
@@ -135,8 +150,13 @@ export function Library() {
     tab === 'all' ? undefined : { status: tab }
   )
 
+  const { data: allBooks } = useListBooks()
+  const hasBooksWithMissingFields = (allBooks ?? []).some(
+    (b) => b.pages == null || b.genre == null,
+  )
+
   const counts = {
-    all: useListBooks().data?.length || 0,
+    all: allBooks?.length || 0,
     reading: useListBooks({ status: 'reading' }).data?.length || 0,
     want_to_read: useListBooks({ status: 'want_to_read' }).data?.length || 0,
     read: useListBooks({ status: 'read' }).data?.length || 0,
@@ -152,6 +172,23 @@ export function Library() {
           <p className="text-muted-foreground mt-1">{t("library.subtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
+          {hasBooksWithMissingFields && enrichingCount === 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => triggerEnrichAll()}
+              disabled={enrichAllPending}
+              className="gap-1.5 rounded-full border-border/60 text-muted-foreground hover:text-foreground"
+              data-testid="button-enrich-all"
+            >
+              {enrichAllPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4" />
+              )}
+              Fill in missing details
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

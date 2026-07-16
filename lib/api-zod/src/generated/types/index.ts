@@ -14,6 +14,7 @@ export * from './bookPatch';
 export * from './bookPatchStatus';
 export * from './bookStats';
 export * from './bookStatus';
+export * from './enrichAllResult';
 export * from './genreCount';
 export * from './healthStatus';
 export * from './listBooksParams';

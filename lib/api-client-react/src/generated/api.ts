@@ -25,6 +25,7 @@ import type {
   BookLookupResult,
   BookPatch,
   BookStats,
+  EnrichAllResult,
   HealthStatus,
   ListBooksParams,
   LookupBookByIsbnParams
@@ -287,6 +288,77 @@ export const useCreateBook = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateBookMutationOptions(options));
+    }
+
+export const getEnrichAllBooksUrl = () => {
+
+
+
+
+  return `/api/books/enrich-all`
+}
+
+/**
+ * @summary Enrich all books missing page counts or genres from OpenLibrary
+ */
+export const enrichAllBooks = async ( options?: RequestInit): Promise<EnrichAllResult> => {
+
+  return customFetch<EnrichAllResult>(getEnrichAllBooksUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getEnrichAllBooksMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrichAllBooks>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enrichAllBooks>>, TError,void, TContext> => {
+
+const mutationKey = ['enrichAllBooks'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enrichAllBooks>>, void> = () => {
+
+
+          return  enrichAllBooks(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnrichAllBooksMutationResult = NonNullable<Awaited<ReturnType<typeof enrichAllBooks>>>
+
+    export type EnrichAllBooksMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Enrich all books missing page counts or genres from OpenLibrary
+ */
+export const useEnrichAllBooks = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrichAllBooks>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enrichAllBooks>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getEnrichAllBooksMutationOptions(options));
     }
 
 export const getLookupBookByIsbnUrl = (params: LookupBookByIsbnParams,) => {

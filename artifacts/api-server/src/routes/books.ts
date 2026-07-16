@@ -1,7 +1,8 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, isNull } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import { db, booksTable } from "@workspace/db";
+import { enrichBooksInBackground } from "../lib/enrich.js";
 
 const router = Router();
 
@@ -266,6 +267,35 @@ router.patch("/:id", requireAuth, async (req, res) => {
     return res.json(formatBook(book));
   } catch (err) {
     return res.status(500).json({ error: "Failed to update book" });
+  }
+});
+
+// POST /api/books/enrich-all  (must be before /:id)
+router.post("/enrich-all", requireAuth, async (req, res) => {
+  try {
+    const { userId } = req as AuthedRequest;
+
+    // Find books owned by this user that are missing pages OR genre
+    const toEnrich = await db
+      .select({ id: booksTable.id, title: booksTable.title, author: booksTable.author })
+      .from(booksTable)
+      .where(
+        and(
+          eq(booksTable.userId, userId),
+          or(isNull(booksTable.pages), isNull(booksTable.genre)),
+        ),
+      );
+
+    if (toEnrich.length === 0) {
+      return res.json({ enriching: 0 });
+    }
+
+    // Fire-and-forget — do NOT await
+    enrichBooksInBackground(toEnrich).catch(() => {/* swallow */});
+
+    return res.json({ enriching: toEnrich.length });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to start enrichment" });
   }
 });
 
