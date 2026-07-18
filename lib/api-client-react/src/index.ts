@@ -4,3 +4,6 @@ export { customFetch, setBaseUrl, setAuthTokenGetter } from "./custom-fetch";
 export type { AuthTokenGetter } from "./custom-fetch";
 export { bulkLookupIsbn } from "./isbn-bulk";
 export type { IsbnBulkEntry, IsbnBulkResult, IsbnLookupStatus } from "./isbn-bulk";
+export { GENRES } from "./genres";
+export type { Genre } from "./genres";
+export { aggregateGenreCounts } from "./genres";

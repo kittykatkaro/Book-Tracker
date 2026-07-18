@@ -18,14 +18,9 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { lookupBookByIsbn, bulkLookupIsbn } from '@workspace/api-client-react';
+import { lookupBookByIsbn, bulkLookupIsbn, GENRES } from '@workspace/api-client-react';
 import type { IsbnBulkEntry } from '@workspace/api-client-react';
 import { useTranslation } from 'react-i18next';
-
-const GENRES = [
-  'Fiction', 'Non-Fiction', 'Mystery', 'Fantasy', 'Sci-Fi',
-  'Biography', 'History', 'Self-Help', 'Romance', 'Thriller', 'Other',
-];
 
 type Mode = 'single' | 'set';
 

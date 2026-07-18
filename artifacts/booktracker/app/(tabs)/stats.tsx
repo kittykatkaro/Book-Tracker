@@ -5,6 +5,7 @@ import { useColors } from '@/hooks/useColors';
 import { useBooks } from '@/context/BooksContext';
 import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { aggregateGenreCounts } from '@workspace/api-client-react';
 
 function StatCard({ icon, label, value, color, colors }: {
   icon: string; label: string; value: number; color: string; colors: ReturnType<typeof useColors>;
@@ -48,9 +49,8 @@ export default function StatsScreen() {
       return new Date(b.dateFinished).getFullYear() === thisYear;
     });
     const totalPages = books.filter((b) => b.status === 'read').reduce((sum, b) => sum + (b.pages ?? 0), 0);
-    const genreCounts: Record<string, number> = {};
-    books.forEach((b) => { if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] ?? 0) + 1; });
-    const genres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const genreCounts = aggregateGenreCounts(books.map((b) => b.genre));
+    const genres = genreCounts.slice(0, 6).map((g) => [g.genre, g.count] as [string, number]);
     const maxGenre = genres[0]?.[1] ?? 1;
     const rated = books.filter((b) => b.rating != null);
     const avgRating = rated.length > 0

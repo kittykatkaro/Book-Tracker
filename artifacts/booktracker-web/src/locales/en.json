@@ -72,6 +72,8 @@
     "titlePlaceholder": "e.g. The Secret History",
     "authorPlaceholder": "e.g. Donna Tartt",
     "genrePlaceholder": "e.g. Fiction, Fantasy",
+    "selectGenre": "Select a genre",
+    "genreNone": "No genre",
     "pagesPlaceholder": "e.g. 544",
     "statusWantToRead": "Want to Read",
     "statusReading": "Currently Reading",

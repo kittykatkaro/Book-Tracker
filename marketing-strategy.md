@@ -1,8 +1,8 @@
 # BookTracker — Marketing Strategy
 
-> **Document status:** Draft v1.1 · July 2026  
+> **Document status:** Draft v1.2 · July 2026  
 > **Audience:** Founders, product leads, growth team  
-> **Latest update:** Dark mode (web + mobile) and bulk book-set ISBN import added to positioning and launch assets.
+> **Latest update:** Canonical genre classification, smart genre dropdowns, and deduplicated genre stats added to positioning.
 
 ---
 
@@ -15,6 +15,7 @@ BookTracker is a cross-platform reading companion — available as a web app and
 - **Book-set import:** Paste or scan a whole box-set of ISBNs at once, then mark each volume individually or bulk-update them all.
 - **Book clubs built-in:** Private, invite-only clubs with shared reading lists and threaded discussion — no third-party app needed.
 - **Dark mode everywhere:** Light, dark, and system themes on both web and mobile, with a consistent, comfortable reading experience at any hour.
+- **Clean, canonical genres:** Imports and ISBN lookups automatically classify books into a curated genre list; stats never fragment "Fantasy" and "fantasy" into separate buckets.
 - **Multilingual from day one:** Full English and German UI with in-app language switching.
 
 ---
@@ -54,6 +55,7 @@ BookTracker is a cross-platform reading companion — available as a web app and
 | Bulk ISBN / book-set import | ✗ | ✗ | ✓ |
 | Private book clubs | ✗ | ✗ | ✓ |
 | Dark mode + system theme | ✗ | ✗ | ✓ |
+| Canonical genre classification & clean stats | ✗ | ✗ | ✓ |
 | No social feed/ads | ✗ | ✓ | ✓ |
 | Multilingual | ✗ | ✗ | ✓ |
 | Owned by Amazon | ✓ | ✗ | ✗ |
@@ -81,6 +83,9 @@ BookTracker is a cross-platform reading companion — available as a web app and
 
 **For the Night Reader:**
 > "Light, dark, or follow your system — your library looks right at any hour, on any screen."
+
+**For the Stats-Curious Reader:**
+> "Genres that actually make sense. See your reading habits clearly, without 'Fiction' and 'fiction' fighting for the same spot."
 
 ### Tagline Options (test and iterate)
 1. *Every book you've ever loved, in one place.*

@@ -4,6 +4,7 @@
  */
 import { eq } from "drizzle-orm";
 import { db, booksTable } from "@workspace/db";
+import { classifyGenre } from "./genres.js";
 
 /**
  * Look up a book by title + author on OpenLibrary's search API.
@@ -30,7 +31,7 @@ export async function lookupByTitleAuthor(
     if (!doc) return null;
     return {
       pages: doc.number_of_pages_median ?? null,
-      genre: doc.subject?.[0] ?? null,
+      genre: classifyGenre(doc.subject),
     };
   } catch {
     return null;

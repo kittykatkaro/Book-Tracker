@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCreateBook, getListBooksQueryKey, lookupBookByIsbn } from "@workspace/api-client-react";
+import { useCreateBook, getListBooksQueryKey, lookupBookByIsbn, GENRES } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +31,8 @@ import { IsbnScannerDialog } from "@/components/isbn-scanner";
 import { IsbnSetImport } from "@/components/isbn-set-import";
 
 type Mode = "single" | "set";
+
+const NO_GENRE = "__none__";
 
 export function AddBook() {
   const { t } = useTranslation();
@@ -302,13 +304,30 @@ export function AddBook() {
                               {t("addBook.optional")}
                             </span>
                           </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder={t("addBook.genrePlaceholder")}
-                              data-testid="input-genre"
-                              {...field}
-                            />
-                          </FormControl>
+                          <Select
+                            onValueChange={(v) => field.onChange(v === NO_GENRE ? "" : v)}
+                            value={field.value || NO_GENRE}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-genre">
+                                <SelectValue placeholder={t("addBook.selectGenre")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value={NO_GENRE} data-testid="option-genre-none">
+                                {t("addBook.genreNone")}
+                              </SelectItem>
+                              {GENRES.map((g) => (
+                                <SelectItem
+                                  key={g}
+                                  value={g}
+                                  data-testid={`option-genre-${g.toLowerCase()}`}
+                                >
+                                  {g}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

@@ -3,6 +3,8 @@
  * Supports: Goodreads CSV, generic CSV, DOCX (via mammoth), PDF (via pdf-parse).
  */
 
+import { classifyGenre } from "./lib/genres.js";
+
 export interface ParsedBook {
   title: string;
   author: string;
@@ -205,7 +207,7 @@ export function parseCSV(buffer: Buffer): ParsedBook[] {
         status,
         rating: rating && rating > 0 ? rating : undefined,
         pages: pages && pages > 0 ? pages : undefined,
-        genre: bookshelves || undefined,
+        genre: classifyGenre(bookshelves?.split(",").map((s) => s.trim())) ?? undefined,
         dateRead: dateReadStr || undefined,
         source: "goodreads",
       });

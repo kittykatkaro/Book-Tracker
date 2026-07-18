@@ -72,6 +72,8 @@
     "titlePlaceholder": "z.B. Der Herr der Ringe",
     "authorPlaceholder": "z.B. J.R.R. Tolkien",
     "genrePlaceholder": "z.B. Fantasy, Krimi",
+    "selectGenre": "Genre auswählen",
+    "genreNone": "Kein Genre",
     "pagesPlaceholder": "z.B. 544",
     "statusWantToRead": "Möchte lesen",
     "statusReading": "Lese gerade",

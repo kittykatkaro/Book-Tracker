@@ -3,6 +3,7 @@ import { eq, desc, and, or, isNull } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import { db, booksTable } from "@workspace/db";
 import { enrichBooksInBackground } from "../lib/enrich.js";
+import { classifyGenre, aggregateGenreCounts } from "../lib/genres.js";
 
 const router = Router();
 
@@ -87,14 +88,7 @@ router.get("/stats", requireAuth, async (req, res) => {
         ? ratedBooks.reduce((s, b) => s + (b.rating ?? 0), 0) / ratedBooks.length
         : null;
 
-    const genreCounts: Record<string, number> = {};
-    books.forEach((b) => {
-      if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] ?? 0) + 1;
-    });
-    const topGenres = Object.entries(genreCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([genre, count]) => ({ genre, count }));
+    const topGenres = aggregateGenreCounts(books.map((b) => b.genre)).slice(0, 6);
 
     return res.json({
       total: books.length,
@@ -140,12 +134,7 @@ router.get("/isbn-lookup", async (req, res) => {
       ? (book.authors as { name?: string }[]).map((a) => a.name).filter(Boolean).join(", ")
       : "";
     const subjects = book.subjects as { name?: string }[] | string[] | undefined;
-    const genre =
-      Array.isArray(subjects) && subjects.length > 0
-        ? typeof subjects[0] === "string"
-          ? subjects[0]
-          : (subjects[0] as { name?: string }).name ?? null
-        : null;
+    const genre = classifyGenre(subjects);
     const publishYear = book.publish_date
       ? (() => { const m = String(book.publish_date).match(/\d{4}/); return m ? parseInt(m[0], 10) : null; })()
       : null;
@@ -188,12 +177,7 @@ router.post("/isbn-bulk-lookup", async (req, res) => {
         ? (book.authors as { name?: string }[]).map((a) => a.name).filter(Boolean).join(", ")
         : "";
       const subjects = book.subjects as { name?: string }[] | string[] | undefined;
-      const genre =
-        Array.isArray(subjects) && subjects.length > 0
-          ? typeof subjects[0] === "string"
-            ? subjects[0]
-            : (subjects[0] as { name?: string }).name ?? null
-          : null;
+      const genre = classifyGenre(subjects);
       const cover = book.cover as Record<string, string> | undefined;
       const publishYear = book.publish_date
         ? (() => { const m = String(book.publish_date).match(/\d{4}/); return m ? parseInt(m[0], 10) : null; })()
