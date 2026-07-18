@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, useListBooks, lookupBookByIsbn } from "@workspace/api-client-react";
+import type { Book } from "@workspace/api-client-react";
+import { IsbnScannerDialog } from "@/components/isbn-scanner";
 import {
   ArrowLeft, Copy, Check, BookOpen, Users, Plus, Trash2,
   MessageSquare, ChevronRight, BookMarked, LogOut, Loader2, Lock,
+  Library, ScanBarcode, Search, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,51 +108,291 @@ function usePosts(clubId: string, bookId: string | null) {
 // Add Book Dialog
 // ---------------------------------------------------------------------------
 
+type AddBookMode = "manual" | "library" | "scan";
+
+interface ClubBookPayload {
+  title: string;
+  author: string;
+  isbn?: string | null;
+  pages?: number | null;
+  genre?: string | null;
+}
+
 function AddBookDialog({ clubId, open, onClose }: { clubId: string; open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [mode, setMode] = useState<AddBookMode>("manual");
+
+  // Manual entry state
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
 
+  // Library import state
+  const [librarySearch, setLibrarySearch] = useState("");
+  const { data: myBooks, isLoading: libraryLoading } = useListBooks(undefined, {
+    query: { enabled: open && mode === "library" },
+  } as any);
+
+  // ISBN scan state
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scannedIsbn, setScannedIsbn] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<{
+    title: string;
+    author: string;
+    pages: number | null;
+    genre: string | null;
+  } | null>(null);
+
+  const resetAll = () => {
+    setTitle("");
+    setAuthor("");
+    setLibrarySearch("");
+    setScannerOpen(false);
+    setScanLoading(false);
+    setScanError(null);
+    setScannedIsbn(null);
+    setScanResult(null);
+    setMode("manual");
+  };
+
   const mutation = useMutation({
-    mutationFn: (data: { title: string; author: string }) =>
+    mutationFn: (data: ClubBookPayload) =>
       customFetch(`/api/clubs/${clubId}/books`, { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["club", clubId] });
       toast({ title: t("clubDetail.addBook") + "!" });
-      setTitle(""); setAuthor(""); onClose();
+      resetAll();
+      onClose();
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const filteredLibraryBooks = useMemo(() => {
+    const books = myBooks ?? [];
+    const q = librarySearch.trim().toLowerCase();
+    if (!q) return books;
+    return books.filter(
+      (b: Book) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q),
+    );
+  }, [myBooks, librarySearch]);
+
+  const handleScan = async (isbn: string) => {
+    setScannerOpen(false);
+    const clean = isbn.replace(/[^0-9Xx]/g, "");
+    if (!clean) return;
+    setScannedIsbn(clean);
+    setScanResult(null);
+    setScanError(null);
+    setScanLoading(true);
+    try {
+      const result = await lookupBookByIsbn({ isbn: clean });
+      setScanResult({
+        title: result.title,
+        author: result.author,
+        pages: result.pages ?? null,
+        genre: result.genre ?? null,
+      });
+    } catch {
+      setScanError(t("clubDetail.addBookDialog.scanNotFound"));
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    resetAll();
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="font-serif">{t("clubDetail.addBookDialog.title")}</DialogTitle>
           <DialogDescription>{t("clubDetail.addBookDialog.description")}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="book-title">{t("clubDetail.addBookDialog.titleLabel")}</Label>
-            <Input id="book-title" placeholder={t("clubDetail.addBookDialog.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="book-author">{t("clubDetail.addBookDialog.authorLabel")}</Label>
-            <Input id="book-author" placeholder={t("clubDetail.addBookDialog.authorPlaceholder")} value={author} onChange={(e) => setAuthor(e.target.value)} />
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose}>{t("clubDetail.addBookDialog.cancel")}</Button>
-            <Button
-              onClick={() => mutation.mutate({ title, author })}
-              disabled={!title.trim() || !author.trim() || mutation.isPending}
-            >
-              {mutation.isPending ? t("clubDetail.addBookDialog.adding") : t("clubDetail.addBookDialog.add")}
-            </Button>
-          </div>
+
+        {/* Mode toggle */}
+        <div className="inline-flex flex-wrap rounded-full border border-border p-1 bg-secondary/50 gap-1">
+          <button
+            type="button"
+            onClick={() => setMode("manual")}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              mode === "manual" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("clubDetail.addBookDialog.modeManual")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("library")}
+            className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              mode === "library" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Library className="h-3 w-3" />
+            {t("clubDetail.addBookDialog.modeLibrary")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("scan")}
+            className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              mode === "scan" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ScanBarcode className="h-3 w-3" />
+            {t("clubDetail.addBookDialog.modeScan")}
+          </button>
         </div>
+
+        {mode === "manual" && (
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="book-title">{t("clubDetail.addBookDialog.titleLabel")}</Label>
+              <Input id="book-title" placeholder={t("clubDetail.addBookDialog.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="book-author">{t("clubDetail.addBookDialog.authorLabel")}</Label>
+              <Input id="book-author" placeholder={t("clubDetail.addBookDialog.authorPlaceholder")} value={author} onChange={(e) => setAuthor(e.target.value)} />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={handleClose}>{t("clubDetail.addBookDialog.cancel")}</Button>
+              <Button
+                onClick={() => mutation.mutate({ title, author })}
+                disabled={!title.trim() || !author.trim() || mutation.isPending}
+              >
+                {mutation.isPending ? t("clubDetail.addBookDialog.adding") : t("clubDetail.addBookDialog.add")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {mode === "library" && (
+          <div className="space-y-3 pt-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder={t("clubDetail.addBookDialog.librarySearchPlaceholder")}
+                value={librarySearch}
+                onChange={(e) => setLibrarySearch(e.target.value)}
+              />
+            </div>
+            <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+              {libraryLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredLibraryBooks.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  {(myBooks ?? []).length === 0
+                    ? t("clubDetail.addBookDialog.libraryEmpty")
+                    : t("clubDetail.addBookDialog.libraryNoMatches")}
+                </p>
+              ) : (
+                filteredLibraryBooks.map((b: Book) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() =>
+                      mutation.mutate({
+                        title: b.title,
+                        author: b.author,
+                        pages: b.pages ?? null,
+                        genre: b.genre ?? null,
+                      })
+                    }
+                    disabled={mutation.isPending}
+                    className="w-full flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border/60 hover:bg-secondary/60 transition-colors text-left disabled:opacity-50"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{b.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{b.author}</p>
+                    </div>
+                    <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end pt-1">
+              <Button variant="outline" onClick={handleClose}>{t("clubDetail.addBookDialog.cancel")}</Button>
+            </div>
+          </div>
+        )}
+
+        {mode === "scan" && (
+          <div className="space-y-4 pt-2">
+            {!scanResult && !scanLoading && (
+              <>
+                <p className="text-sm text-muted-foreground">{t("clubDetail.addBookDialog.scanHint")}</p>
+                <Button type="button" variant="outline" className="w-full" onClick={() => setScannerOpen(true)}>
+                  <ScanBarcode className="h-4 w-4 mr-2" />
+                  {t("clubDetail.addBookDialog.scanButton")}
+                </Button>
+                {scanError && (
+                  <p className="text-xs text-destructive flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {scanError}
+                  </p>
+                )}
+              </>
+            )}
+
+            {scanLoading && (
+              <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <p className="text-sm">{t("clubDetail.addBookDialog.scanLookingUp")}</p>
+              </div>
+            )}
+
+            {scanResult && !scanLoading && (
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg border border-border/60 bg-secondary/40">
+                  <p className="text-sm font-medium">{scanResult.title}</p>
+                  <p className="text-xs text-muted-foreground">{scanResult.author}</p>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setScanResult(null);
+                      setScannedIsbn(null);
+                      setScanError(null);
+                      setScannerOpen(true);
+                    }}
+                  >
+                    {t("clubDetail.addBookDialog.scanAgain")}
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      mutation.mutate({
+                        title: scanResult.title,
+                        author: scanResult.author,
+                        isbn: scannedIsbn,
+                        pages: scanResult.pages,
+                        genre: scanResult.genre,
+                      })
+                    }
+                    disabled={mutation.isPending}
+                  >
+                    {mutation.isPending ? t("clubDetail.addBookDialog.adding") : t("clubDetail.addBookDialog.scanPreviewAdd")}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!scanResult && (
+              <div className="flex justify-end pt-1">
+                <Button variant="outline" onClick={handleClose}>{t("clubDetail.addBookDialog.cancel")}</Button>
+              </div>
+            )}
+          </div>
+        )}
       </DialogContent>
+
+      <IsbnScannerDialog open={scannerOpen} onScan={handleScan} onClose={() => setScannerOpen(false)} />
     </Dialog>
   );
 }

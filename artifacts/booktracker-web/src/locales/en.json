@@ -195,7 +195,20 @@
       "authorPlaceholder": "Author name",
       "cancel": "Cancel",
       "adding": "Adding…",
-      "add": "Add book"
+      "add": "Add book",
+      "modeManual": "Type manually",
+      "modeLibrary": "From my library",
+      "modeScan": "Scan ISBN",
+      "libraryEmpty": "You haven't added any books to your library yet.",
+      "librarySearchPlaceholder": "Search your library…",
+      "libraryNoMatches": "No books match your search.",
+      "libraryAdd": "Add",
+      "scanHint": "Scan the barcode on the back of the book to look it up automatically.",
+      "scanButton": "Scan barcode",
+      "scanLookingUp": "Looking up book…",
+      "scanNotFound": "No book found for that ISBN. Try scanning again, or add it manually instead.",
+      "scanPreviewAdd": "Add to club",
+      "scanAgain": "Scan another"
     },
     "postDialog": {
       "title": "Share your thoughts",

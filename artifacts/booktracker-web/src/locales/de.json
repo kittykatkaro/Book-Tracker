@@ -195,7 +195,20 @@
       "authorPlaceholder": "Autorenname",
       "cancel": "Abbrechen",
       "adding": "Wird hinzugefügt…",
-      "add": "Buch hinzufügen"
+      "add": "Buch hinzufügen",
+      "modeManual": "Manuell eingeben",
+      "modeLibrary": "Aus meiner Bibliothek",
+      "modeScan": "ISBN scannen",
+      "libraryEmpty": "Du hast noch keine Bücher zu deiner Bibliothek hinzugefügt.",
+      "librarySearchPlaceholder": "Bibliothek durchsuchen…",
+      "libraryNoMatches": "Keine Bücher gefunden.",
+      "libraryAdd": "Hinzufügen",
+      "scanHint": "Scanne den Barcode auf der Buchrückseite, um es automatisch nachzuschlagen.",
+      "scanButton": "Barcode scannen",
+      "scanLookingUp": "Buch wird gesucht…",
+      "scanNotFound": "Kein Buch für diese ISBN gefunden. Versuche es erneut oder füge es manuell hinzu.",
+      "scanPreviewAdd": "Zum Klub hinzufügen",
+      "scanAgain": "Erneut scannen"
     },
     "postDialog": {
       "title": "Gedanken teilen",
