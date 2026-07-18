@@ -96,7 +96,22 @@
     "setImportAdd_other": "{{count}} Bücher hinzufügen",
     "setImportReset": "Neu starten",
     "setImportSuccess": "{{count}} Buch zur Bibliothek hinzugefügt!",
-    "setImportSuccess_other": "{{count}} Bücher zur Bibliothek hinzugefügt!"
+    "setImportSuccess_other": "{{count}} Bücher zur Bibliothek hinzugefügt!",
+    "setSubModeMulti": "Mehrere ISBNs",
+    "setSubModeSingle": "Eine Set-ISBN",
+    "setSingleHint": "Gib die ISBN ein, die auf einer Box-Edition oder Sammelausgabe steht — wir versuchen zu erraten, welche einzelnen Bücher enthalten sind.",
+    "setSinglePlaceholder": "z.B. 9780545162074",
+    "setSingleLookup": "Set auflösen",
+    "setDisclaimerTitle": "Bestmögliche Schätzung — bitte prüfen",
+    "setDisclaimer": "Es gibt keine öffentliche Datenbank, die auflistet, welche einzelnen Bücher in einem Set enthalten sind — daher können wir das nicht direkt nachschlagen. Diese Titel sind unsere beste Schätzung anhand des Set-Titels und anderer Bücher desselben Autors. Bitte prüfe jeden Titel — und seinen Lesestatus — bevor du ihn zur Bibliothek hinzufügst.",
+    "setConfidenceHigh": "Höhere Trefferwahrscheinlichkeit",
+    "setConfidenceMedium": "Mittlere Trefferwahrscheinlichkeit",
+    "setConfidenceLow": "Geringe Trefferwahrscheinlichkeit — bitte genau prüfen",
+    "setNotASet": "Diese ISBN sieht nicht nach einem Set aus. Versuche stattdessen \"Mehrere ISBNs\" oder füge sie als Einzelbuch hinzu.",
+    "setNoMatches": "Das sieht nach einem Set aus, aber wir konnten die einzelnen Bücher nicht automatisch finden. Du musst sie eventuell einzeln hinzufügen.",
+    "setSeriesLabel": "Erkannte Reihe: {{name}}",
+    "setEstimatedLabel": "Geschätzte Bände: {{count}}",
+    "setSwitchToMulti": "Zu \"Mehrere ISBNs\" wechseln"
   },
   "stats": {
     "title": "Lesestatistiken",

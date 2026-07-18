@@ -96,7 +96,22 @@
     "setImportAdd_other": "Add {{count}} books",
     "setImportReset": "Start over",
     "setImportSuccess": "{{count}} book added to your library!",
-    "setImportSuccess_other": "{{count}} books added to your library!"
+    "setImportSuccess_other": "{{count}} books added to your library!",
+    "setSubModeMulti": "Multiple ISBNs",
+    "setSubModeSingle": "One boxset ISBN",
+    "setSingleHint": "Enter the ISBN printed on a boxed set or omnibus edition, and we'll try to guess which individual books are inside it.",
+    "setSinglePlaceholder": "e.g. 9780545162074",
+    "setSingleLookup": "Expand set",
+    "setDisclaimerTitle": "Best-effort guess — please review",
+    "setDisclaimer": "There's no public database that lists which individual books are inside a boxed set, so we can't look this up directly. These titles are our best guess, based on the set's title and other books by the same author. Double-check each one — and its reading status — before adding it to your library.",
+    "setConfidenceHigh": "Higher-confidence match",
+    "setConfidenceMedium": "Medium-confidence match",
+    "setConfidenceLow": "Low-confidence match — please double-check",
+    "setNotASet": "This ISBN doesn't look like a boxed set. Try \"Multiple ISBNs\" instead, or add it as a single book.",
+    "setNoMatches": "This looks like a boxed set, but we couldn't automatically find its individual books. You may need to add them one by one.",
+    "setSeriesLabel": "Detected series: {{name}}",
+    "setEstimatedLabel": "Estimated volumes: {{count}}",
+    "setSwitchToMulti": "Switch to Multiple ISBNs"
   },
   "stats": {
     "title": "Reading Stats",
