@@ -1,13 +1,12 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useCreateBook, getListBooksQueryKey } from "@workspace/api-client-react";
-import { bulkLookupIsbn, lookupIsbnSet } from "@workspace/api-client-react";
-import type { IsbnBulkEntry, BooksetLookupResult } from "@workspace/api-client-react";
+import { bulkLookupIsbn } from "@workspace/api-client-react";
+import type { IsbnBulkEntry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,14 +25,11 @@ import {
   BookMarked,
   Check,
   X,
-  Info,
-  Layers,
 } from "lucide-react";
 import { IsbnScannerDialog } from "@/components/isbn-scanner";
 import { cn } from "@/lib/utils";
 
 type BookStatus = "want_to_read" | "reading" | "read";
-type SubMode = "multi" | "single";
 
 interface BookEntry extends IsbnBulkEntry {
   selectedStatus: BookStatus;
@@ -46,7 +42,6 @@ export function IsbnSetImport() {
   const queryClient = useQueryClient();
   const createBook = useCreateBook();
 
-  const [subMode, setSubMode] = useState<SubMode>("multi");
   const [isbnText, setIsbnText] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannedIsbns, setScannedIsbns] = useState<string[]>([]);
@@ -54,11 +49,6 @@ export function IsbnSetImport() {
   const [books, setBooks] = useState<BookEntry[]>([]);
   const [importing, setImporting] = useState(false);
   const [importDone, setImportDone] = useState(false);
-
-  // Single boxset-ISBN expansion state
-  const [singleIsbn, setSingleIsbn] = useState("");
-  const [setInfo, setSetInfo] = useState<BooksetLookupResult | null>(null);
-  const [setLookupError, setSetLookupError] = useState<string | null>(null);
 
   /** Parse ISBNs from free-form text (commas, spaces, newlines as separators) */
   const parseIsbns = (text: string): string[] => {
@@ -72,12 +62,7 @@ export function IsbnSetImport() {
   const handleScan = (isbn: string) => {
     setScannerOpen(false);
     const clean = isbn.replace(/[^0-9Xx]/g, "");
-    if (!clean) return;
-    if (subMode === "single") {
-      setSingleIsbn(clean);
-      return;
-    }
-    if (scannedIsbns.includes(clean)) return;
+    if (!clean || scannedIsbns.includes(clean)) return;
     setScannedIsbns((prev) => [...prev, clean]);
     setIsbnText((prev) => (prev ? `${prev}\n${clean}` : clean));
   };
@@ -103,31 +88,6 @@ export function IsbnSetImport() {
       setLoading(false);
     }
   }, [isbnText]);
-
-  const handleSingleLookup = useCallback(async () => {
-    const clean = singleIsbn.replace(/[^0-9Xx]/g, "");
-    if (clean.length < 10) return;
-    setLoading(true);
-    setBooks([]);
-    setSetInfo(null);
-    setSetLookupError(null);
-    setImportDone(false);
-    try {
-      const result = await lookupIsbnSet(clean);
-      setSetInfo(result);
-      setBooks(
-        result.books.map((r) => ({
-          ...r,
-          selectedStatus: "want_to_read",
-          selected: true,
-        })),
-      );
-    } catch {
-      setSetLookupError(t("addBook.isbnError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [singleIsbn, t]);
 
   const applyStatusToAll = (status: BookStatus) => {
     setBooks((prev) =>
@@ -194,213 +154,51 @@ export function IsbnSetImport() {
       {/* ISBN entry */}
       {books.length === 0 && (
         <div className="space-y-3">
-          {/* Sub-mode toggle: multiple ISBNs vs. one boxset ISBN */}
-          <div className="inline-flex rounded-full border border-border p-1 bg-secondary/50 gap-1">
-            <button
+          <p className="text-sm text-muted-foreground">
+            {t("addBook.setImportHint")}
+          </p>
+          <Textarea
+            value={isbnText}
+            onChange={(e) => setIsbnText(e.target.value)}
+            placeholder={t("addBook.setImportPlaceholder")}
+            rows={5}
+            className="font-mono text-sm resize-none"
+          />
+          <div className="flex gap-2">
+            <Button
               type="button"
-              onClick={() => setSubMode("multi")}
-              className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                subMode === "multi"
-                  ? "bg-background shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+              onClick={handleLookup}
+              disabled={loading || !parseIsbns(isbnText).length}
+              className="rounded-full px-6"
             >
-              {t("addBook.setSubModeMulti")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubMode("single")}
-              className={cn(
-                "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                subMode === "single"
-                  ? "bg-background shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Search className="h-4 w-4 mr-2" />
               )}
-            >
-              <Layers className="h-3 w-3" />
-              {t("addBook.setSubModeSingle")}
-            </button>
-          </div>
-
-          {subMode === "multi" ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                {t("addBook.setImportHint")}
-              </p>
-              <Textarea
-                value={isbnText}
-                onChange={(e) => setIsbnText(e.target.value)}
-                placeholder={t("addBook.setImportPlaceholder")}
-                rows={5}
-                className="font-mono text-sm resize-none"
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  onClick={handleLookup}
-                  disabled={loading || !parseIsbns(isbnText).length}
-                  className="rounded-full px-6"
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Search className="h-4 w-4 mr-2" />
-                  )}
-                  {t("addBook.setImportLookup")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setScannerOpen(true)}
-                  title={t("addBook.scanHint")}
-                >
-                  <ScanBarcode className="h-4 w-4 mr-2" />
-                  {t("addBook.setImportScan")}
-                </Button>
-              </div>
-              {scannedIsbns.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {t("addBook.setImportScanned", { count: scannedIsbns.length })}
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                {t("addBook.setSingleHint")}
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  value={singleIsbn}
-                  onChange={(e) => setSingleIsbn(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSingleLookup()}
-                  placeholder={t("addBook.setSinglePlaceholder")}
-                  className="font-mono text-sm"
-                />
-                <Button
-                  type="button"
-                  onClick={handleSingleLookup}
-                  disabled={loading || singleIsbn.replace(/[^0-9Xx]/g, "").length < 10}
-                  className="rounded-full px-6"
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Layers className="h-4 w-4 mr-2" />
-                  )}
-                  {t("addBook.setSingleLookup")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setScannerOpen(true)}
-                  title={t("addBook.scanHint")}
-                >
-                  <ScanBarcode className="h-4 w-4" />
-                </Button>
-              </div>
-              {setLookupError && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> {setLookupError}
-                </p>
-              )}
-              {/* Always-visible disclaimer for the boxset-expansion feature */}
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                    {t("addBook.setDisclaimerTitle")}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("addBook.setDisclaimer")}
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Boxset lookup came back with no candidates to review */}
-      {subMode === "single" && setInfo && books.length === 0 && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-secondary/50 border border-border/40">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div className="space-y-2">
-            <p className="text-sm text-foreground">
-              {setInfo.isSet ? t("addBook.setNoMatches") : t("addBook.setNotASet")}
-            </p>
+              {t("addBook.setImportLookup")}
+            </Button>
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => {
-                setSubMode("multi");
-                setSetInfo(null);
-                setSingleIsbn("");
-              }}
+              onClick={() => setScannerOpen(true)}
+              title={t("addBook.scanHint")}
             >
-              {t("addBook.setSwitchToMulti")}
+              <ScanBarcode className="h-4 w-4 mr-2" />
+              {t("addBook.setImportScan")}
             </Button>
           </div>
+          {scannedIsbns.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {t("addBook.setImportScanned", { count: scannedIsbns.length })}
+            </p>
+          )}
         </div>
       )}
 
       {/* Results */}
       {books.length > 0 && (
         <div className="space-y-4">
-          {/* Boxset expansion context: series guess, confidence, disclaimer */}
-          {subMode === "single" && setInfo?.isSet && (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                {setInfo.seriesName && (
-                  <Badge variant="outline" className="text-xs">
-                    {t("addBook.setSeriesLabel", { name: setInfo.seriesName })}
-                  </Badge>
-                )}
-                {setInfo.estimatedCount != null && (
-                  <Badge variant="outline" className="text-xs">
-                    {t("addBook.setEstimatedLabel", { count: setInfo.estimatedCount })}
-                  </Badge>
-                )}
-                {setInfo.confidence && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs",
-                      setInfo.confidence === "high" &&
-                        "border-green-500/40 text-green-700 dark:text-green-400",
-                      setInfo.confidence === "medium" &&
-                        "border-amber-500/40 text-amber-700 dark:text-amber-400",
-                      setInfo.confidence === "low" &&
-                        "border-destructive/40 text-destructive",
-                    )}
-                  >
-                    {t(
-                      setInfo.confidence === "high"
-                        ? "addBook.setConfidenceHigh"
-                        : setInfo.confidence === "medium"
-                          ? "addBook.setConfidenceMedium"
-                          : "addBook.setConfidenceLow",
-                    )}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                    {t("addBook.setDisclaimerTitle")}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("addBook.setDisclaimer")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Apply-all row */}
           <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-secondary/50 border border-border/40">
             <span className="text-xs font-medium text-muted-foreground mr-1">
@@ -458,9 +256,6 @@ export function IsbnSetImport() {
                 setBooks([]);
                 setScannedIsbns([]);
                 setIsbnText("");
-                setSingleIsbn("");
-                setSetInfo(null);
-                setSetLookupError(null);
               }}
             >
               <X className="h-4 w-4 mr-1" />

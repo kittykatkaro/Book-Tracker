@@ -2,7 +2,7 @@
 
 > **Document status:** Draft v1.1 · July 2026  
 > **Audience:** Founders, product leads, growth team  
-> **Latest update:** Dark mode (web + mobile), bulk book-set ISBN import, and single-boxset-ISBN heuristic expansion added to positioning and launch assets.
+> **Latest update:** Dark mode (web + mobile) and bulk book-set ISBN import added to positioning and launch assets.
 
 ---
 
@@ -12,7 +12,7 @@ BookTracker is a cross-platform reading companion — available as a web app and
 
 - **Frictionless onboarding:** Import an entire reading history from Goodreads or a spreadsheet in one step; covers and metadata fill in automatically.
 - **Barcode & ISBN lookup:** Scan the back of any book to add it instantly, no typing required.
-- **Book-set import:** Paste or scan a whole box-set of ISBNs at once, or scan a single boxed-set ISBN and let the app guess the individual volumes — then mark each one individually or bulk-update them all.
+- **Book-set import:** Paste or scan a whole box-set of ISBNs at once, then mark each volume individually or bulk-update them all.
 - **Book clubs built-in:** Private, invite-only clubs with shared reading lists and threaded discussion — no third-party app needed.
 - **Dark mode everywhere:** Light, dark, and system themes on both web and mobile, with a consistent, comfortable reading experience at any hour.
 - **Multilingual from day one:** Full English and German UI with in-app language switching.
@@ -51,8 +51,7 @@ BookTracker is a cross-platform reading companion — available as a web app and
 | Mobile app | ✓ | ✓ | ✓ |
 | Import from Goodreads | ✓ | ✓ | ✓ |
 | Barcode scan to add | ✗ | ✗ | ✓ |
-| Bulk ISBN / boxset import | ✗ | ✗ | ✓ |
-| Boxset ISBN → guessed volumes | ✗ | ✗ | ✓ |
+| Bulk ISBN / book-set import | ✗ | ✗ | ✓ |
 | Private book clubs | ✗ | ✗ | ✓ |
 | Dark mode + system theme | ✗ | ✗ | ✓ |
 | No social feed/ads | ✗ | ✓ | ✓ |
@@ -78,7 +77,7 @@ BookTracker is a cross-platform reading companion — available as a web app and
 > "Add any book in seconds. Know what you've read, remember what you want to read."
 
 **For the Collector / Box-Set Reader:**
-> "Scan an entire box set in one go — or just scan the boxed-set barcode and we'll find the volumes inside. Every book tracked, with its own status, in under a minute."
+> "Scan an entire box set in one go. Every volume tracked, with its own status, in under a minute."
 
 **For the Night Reader:**
 > "Light, dark, or follow your system — your library looks right at any hour, on any screen."
