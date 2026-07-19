@@ -1,9 +1,12 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { eq, desc, and, or, isNull } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
+import multer from "multer";
+import { randomUUID } from "crypto";
 import { db, booksTable } from "@workspace/db";
 import { enrichBooksInBackground } from "../lib/enrich.js";
 import { classifyGenre, aggregateGenreCounts } from "../lib/genres.js";
+import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
 
@@ -23,10 +26,52 @@ function randomColor(): string {
 function formatBook(book: typeof booksTable.$inferSelect) {
   return {
     ...book,
+    coverUrl: book.coverUrl ?? null,
     dateAdded: book.dateAdded.toISOString(),
     dateStarted: book.dateStarted?.toISOString() ?? null,
     dateFinished: book.dateFinished?.toISOString() ?? null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Cover upload helpers
+// ---------------------------------------------------------------------------
+
+const coverUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image files are allowed"));
+  },
+});
+
+function runCoverMulter(req: Request, res: Response): Promise<void> {
+  return new Promise((resolve, reject) => {
+    coverUpload.single("cover")(req as any, res as any, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+function parseGcsPath(path: string): { bucketName: string; objectName: string } {
+  const normalised = path.startsWith("/") ? path : `/${path}`;
+  const parts = normalised.split("/");
+  return { bucketName: parts[1], objectName: parts.slice(2).join("/") };
+}
+
+async function uploadCoverToGcs(buffer: Buffer, mimetype: string): Promise<string> {
+  const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+  if (!privateObjectDir) throw new Error("PRIVATE_OBJECT_DIR not set");
+  const id = randomUUID();
+  const fullPath = `${privateObjectDir}/covers/${id}`;
+  const { bucketName, objectName } = parseGcsPath(fullPath);
+  const bucket = objectStorageClient.bucket(bucketName);
+  const file = bucket.file(objectName);
+  await file.save(buffer, { contentType: mimetype, resumable: false });
+  await file.makePublic();
+  return `https://storage.googleapis.com/${bucketName}/${objectName}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,6 +254,7 @@ router.post("/", requireAuth, async (req, res) => {
       title: string; author: string; status: string;
       rating?: number | null; pages?: number | null;
       currentPage?: number | null; notes?: string | null; genre?: string | null;
+      coverUrl?: string | null;
     };
 
     if (!data.title || !data.author || !data.status) {
@@ -224,6 +270,7 @@ router.post("/", requireAuth, async (req, res) => {
         title: data.title,
         author: data.author,
         coverColor: randomColor(),
+        coverUrl: data.coverUrl ?? null,
         status: data.status,
         rating: data.rating ?? null,
         pages: data.pages ?? null,
@@ -271,6 +318,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
       title?: string; author?: string; status?: string;
       rating?: number | null; pages?: number | null;
       currentPage?: number | null; notes?: string | null; genre?: string | null;
+      coverUrl?: string | null;
       dateStarted?: string | null; dateFinished?: string | null;
     };
 
@@ -290,6 +338,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if ("currentPage" in data) updates.currentPage = data.currentPage ?? null;
     if ("notes" in data) updates.notes = data.notes ?? null;
     if ("genre" in data) updates.genre = data.genre ?? null;
+    if ("coverUrl" in data) updates.coverUrl = data.coverUrl ?? null;
     if ("dateStarted" in data)
       updates.dateStarted = data.dateStarted ? new Date(data.dateStarted) : null;
     if ("dateFinished" in data)
@@ -333,6 +382,37 @@ router.post("/enrich-all", requireAuth, async (req, res) => {
     return res.json({ enriching: toEnrich.length });
   } catch (err) {
     return res.status(500).json({ error: "Failed to start enrichment" });
+  }
+});
+
+// POST /api/books/:id/cover  — upload an image file; stores in GCS and saves public URL
+router.post("/:id/cover", requireAuth, async (req, res) => {
+  try {
+    await runCoverMulter(req, res);
+  } catch (err: any) {
+    return res.status(400).json({ error: err?.message ?? "Upload failed" });
+  }
+
+  const { userId } = req as AuthedRequest;
+  const file = (req as any).file as Express.Multer.File | undefined;
+  if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+  try {
+    const [existing] = await db.select().from(booksTable)
+      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)));
+    if (!existing) return res.status(404).json({ error: "Not found" });
+
+    const publicUrl = await uploadCoverToGcs(file.buffer, file.mimetype);
+
+    const [book] = await db.update(booksTable)
+      .set({ coverUrl: publicUrl })
+      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)))
+      .returning();
+
+    return res.json({ coverUrl: publicUrl, book: formatBook(book) });
+  } catch (err) {
+    console.error("[cover-upload]", err);
+    return res.status(500).json({ error: "Failed to upload cover" });
   }
 });
 

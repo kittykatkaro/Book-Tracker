@@ -16,6 +16,7 @@ export interface Book {
   title: string;
   author: string;
   coverColor: string;
+  coverUrl?: string | null;
   status: BookStatus;
   rating?: number;
   pages?: number;
@@ -33,6 +34,7 @@ function toBook(b: ApiBook): Book {
     title: b.title,
     author: b.author,
     coverColor: b.coverColor,
+    coverUrl: b.coverUrl ?? null,
     status: b.status as BookStatus,
     rating: b.rating ?? undefined,
     pages: b.pages ?? undefined,
@@ -83,6 +85,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
             currentPage: book.currentPage ?? null,
             notes: book.notes ?? null,
             genre: book.genre ?? null,
+            coverUrl: book.coverUrl ?? null,
           },
         },
         { onSuccess: invalidate },
@@ -105,6 +108,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
             ...('currentPage' in updates && { currentPage: updates.currentPage ?? null }),
             ...('notes' in updates && { notes: updates.notes ?? null }),
             ...('genre' in updates && { genre: updates.genre ?? null }),
+            ...('coverUrl' in updates && { coverUrl: updates.coverUrl ?? null }),
             ...('dateStarted' in updates && { dateStarted: updates.dateStarted ?? null }),
             ...('dateFinished' in updates && { dateFinished: updates.dateFinished ?? null }),
           },

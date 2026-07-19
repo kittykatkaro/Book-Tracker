@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, Pressable,
+  Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useBooks, BookStatus } from '@/context/BooksContext';
@@ -10,6 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { customFetch } from '@workspace/api-client-react';
 
 function StarRating({ rating, onChange, colors }: { rating: number; onChange: (r: number) => void; colors: ReturnType<typeof useColors> }) {
   return (
@@ -38,6 +41,11 @@ export default function BookDetailScreen() {
   const [notes, setNotes] = useState(book?.notes ?? '');
   const [currentPage, setCurrentPage] = useState(book?.currentPage?.toString() ?? '');
   const [dirty, setDirty] = useState(false);
+
+  // Cover change state
+  const [coverUrlModalOpen, setCoverUrlModalOpen] = useState(false);
+  const [coverUrlInput, setCoverUrlInput] = useState('');
+  const [coverSaving, setCoverSaving] = useState(false);
 
   useEffect(() => { if (!book) router.back(); }, [book]);
   if (!book) return null;
@@ -82,6 +90,76 @@ export default function BookDetailScreen() {
     }
   };
 
+  // ── Cover handlers ─────────────────────────────────────────────────────────
+
+  const handleChangeCover = () => {
+    const options: Array<{ text: string; onPress?: () => void; style?: 'default' | 'cancel' | 'destructive' }> = [
+      { text: t('bookDetail.coverOptionUrl'), onPress: () => setCoverUrlModalOpen(true) },
+      { text: t('bookDetail.coverOptionLibrary'), onPress: handlePickFromLibrary },
+    ];
+    if (book.coverUrl) {
+      options.push({ text: t('bookDetail.coverOptionRemove'), style: 'destructive', onPress: handleRemoveCover });
+    }
+    options.push({ text: t('bookDetail.cancel'), style: 'cancel' });
+
+    if (Platform.OS === 'web') {
+      setCoverUrlModalOpen(true);
+    } else {
+      Alert.alert(t('bookDetail.changeCover'), undefined, options);
+    }
+  };
+
+  const handlePickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t('bookDetail.coverPermissionDenied'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+
+    setCoverSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('cover', {
+        uri: asset.uri,
+        name: 'cover.jpg',
+        type: asset.mimeType ?? 'image/jpeg',
+      } as any);
+      const data = await customFetch<{ coverUrl: string }>(`/api/books/${id}/cover`, {
+        method: 'POST',
+        body: formData as any,
+      });
+      updateBook(id, { coverUrl: data.coverUrl });
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert(t('bookDetail.coverUploadError'));
+    } finally {
+      setCoverSaving(false);
+    }
+  };
+
+  const handleSaveCoverUrl = async () => {
+    if (!coverUrlInput.trim()) return;
+    setCoverSaving(true);
+    try {
+      updateBook(id, { coverUrl: coverUrlInput.trim() });
+      setCoverUrlModalOpen(false);
+      setCoverUrlInput('');
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } finally {
+      setCoverSaving(false);
+    }
+  };
+
+  const handleRemoveCover = () => {
+    updateBook(id, { coverUrl: null });
+  };
+
   const progress = book.pages && book.currentPage ? book.currentPage / book.pages : null;
 
   return (
@@ -98,9 +176,30 @@ export default function BookDetailScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <View style={[styles.coverLarge, { backgroundColor: book.coverColor, borderRadius: colors.radius + 2 }]}>
-              <Text style={styles.coverLetterLarge}>{book.title.charAt(0).toUpperCase()}</Text>
-            </View>
+            {/* Cover with edit button overlay */}
+            <Pressable onPress={handleChangeCover} style={styles.coverWrapper}>
+              <View style={[styles.coverLarge, { backgroundColor: book.coverUrl ? undefined : book.coverColor, borderRadius: colors.radius + 2 }]}>
+                {book.coverUrl ? (
+                  <Image
+                    source={{ uri: book.coverUrl }}
+                    style={[StyleSheet.absoluteFill, { borderRadius: colors.radius + 2 }]}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                ) : (
+                  <Text style={styles.coverLetterLarge}>{book.title.charAt(0).toUpperCase()}</Text>
+                )}
+              </View>
+              {/* Edit overlay badge */}
+              <View style={[styles.coverEditBadge, { backgroundColor: colors.primary }]}>
+                {coverSaving ? (
+                  <Feather name="loader" size={11} color="#fff" />
+                ) : (
+                  <Feather name="camera" size={11} color="#fff" />
+                )}
+              </View>
+            </Pressable>
+
             <Text style={[styles.bookTitle, { color: colors.foreground }]}>{book.title}</Text>
             <Text style={[styles.bookAuthor, { color: colors.mutedForeground }]}>{book.author}</Text>
             {book.genre && (
@@ -210,6 +309,32 @@ export default function BookDetailScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Cover URL modal */}
+      <Modal visible={coverUrlModalOpen} transparent animationType="slide" onRequestClose={() => setCoverUrlModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('bookDetail.coverUrlModalTitle')}</Text>
+            <TextInput
+              value={coverUrlInput}
+              onChangeText={setCoverUrlInput}
+              placeholder={t('bookDetail.coverUrlPlaceholder')}
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.modalInput, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
+            />
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => { setCoverUrlModalOpen(false); setCoverUrlInput(''); }} style={[styles.modalBtn, { borderColor: colors.border }]}>
+                <Text style={[styles.modalBtnText, { color: colors.mutedForeground }]}>{t('bookDetail.cancel')}</Text>
+              </Pressable>
+              <Pressable onPress={handleSaveCoverUrl} disabled={!coverUrlInput.trim() || coverSaving} style={[styles.modalBtn, styles.modalBtnPrimary, { backgroundColor: colors.primary, opacity: !coverUrlInput.trim() ? 0.5 : 1 }]}>
+                <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>{t('bookDetail.coverSave')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -220,8 +345,10 @@ const styles = StyleSheet.create({
   navBtn: { padding: 8 },
   scroll: { paddingHorizontal: 16 },
   hero: { alignItems: 'center', paddingVertical: 24, gap: 8 },
-  coverLarge: { width: 110, height: 150, alignItems: 'center', justifyContent: 'center', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6 },
+  coverWrapper: { position: 'relative', marginBottom: 8 },
+  coverLarge: { width: 110, height: 150, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6 },
   coverLetterLarge: { color: '#FFFFFF', fontSize: 48, fontFamily: 'Inter_700Bold' },
+  coverEditBadge: { position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2, elevation: 3 },
   bookTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', textAlign: 'center', lineHeight: 28 },
   bookAuthor: { fontSize: 16, fontFamily: 'Inter_400Regular' },
   genrePill: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20, marginTop: 2 },
@@ -245,4 +372,13 @@ const styles = StyleSheet.create({
   dateValue: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   saveBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
   saveBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  // Modal
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 24, gap: 16 },
+  modalTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  modalInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, fontFamily: 'Inter_400Regular' },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
+  modalBtnPrimary: { borderWidth: 0 },
+  modalBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 });

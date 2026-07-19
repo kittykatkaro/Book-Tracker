@@ -23,10 +23,20 @@ function BookCard({ book }: { book: Book }) {
     <Link href={`/book/${book.id}`} className="group flex flex-col h-full rounded-xl overflow-hidden hover-elevate transition-all border border-border/50 bg-card" data-testid={`card-book-${book.id}`}>
       <div 
         className="w-full h-48 sm:h-56 flex items-center justify-center relative overflow-hidden"
-        style={{ backgroundColor: book.coverColor }}
+        style={{ backgroundColor: book.coverUrl ? undefined : book.coverColor }}
       >
-        <span className="text-6xl sm:text-7xl font-serif text-white/90 drop-shadow-md font-bold group-hover:scale-110 transition-transform duration-500 ease-out">{initial}</span>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60 mix-blend-multiply"></div>
+        {book.coverUrl ? (
+          <img
+            src={book.coverUrl}
+            alt={book.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          />
+        ) : (
+          <>
+            <span className="text-6xl sm:text-7xl font-serif text-white/90 drop-shadow-md font-bold group-hover:scale-110 transition-transform duration-500 ease-out">{initial}</span>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60 mix-blend-multiply"></div>
+          </>
+        )}
       </div>
       <CardContent className="p-4 flex flex-col flex-1">
         <div className="flex-1">

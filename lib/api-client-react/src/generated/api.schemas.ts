@@ -23,6 +23,8 @@ export interface Book {
   title: string;
   author: string;
   coverColor: string;
+  /** @nullable */
+  coverUrl?: string | null;
   status: BookStatus;
   /** @nullable */
   rating?: number | null;
@@ -66,6 +68,8 @@ export interface BookInput {
   notes?: string | null;
   /** @nullable */
   genre?: string | null;
+  /** @nullable */
+  coverUrl?: string | null;
 }
 
 export type BookPatchStatus = typeof BookPatchStatus[keyof typeof BookPatchStatus];
@@ -91,6 +95,8 @@ export interface BookPatch {
   notes?: string | null;
   /** @nullable */
   genre?: string | null;
+  /** @nullable */
+  coverUrl?: string | null;
   /** @nullable */
   dateStarted?: string | null;
   /** @nullable */

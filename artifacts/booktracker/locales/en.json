@@ -89,7 +89,17 @@
     "notesPlaceholder": "Add notes, quotes, or thoughts...",
     "saveChanges": "Save Changes",
     "started": "Started",
-    "finished": "Finished"
+    "finished": "Finished",
+    "changeCover": "Change Cover",
+    "coverOptionUrl": "Paste image URL",
+    "coverOptionLibrary": "Choose from photo library",
+    "coverOptionRemove": "Remove cover",
+    "coverUrlModalTitle": "Cover image URL",
+    "coverUrlPlaceholder": "https://example.com/cover.jpg",
+    "coverSave": "Save",
+    "cancel": "Cancel",
+    "coverPermissionDenied": "Photo library access denied",
+    "coverUploadError": "Upload failed. Please try again."
   },
   "addBook": {
     "title": "Add Book",

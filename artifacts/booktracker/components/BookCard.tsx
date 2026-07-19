@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useColors } from '@/hooks/useColors';
 import { Book, BookStatus } from '@/context/BooksContext';
 import { Feather } from '@expo/vector-icons';
@@ -40,8 +41,17 @@ export function BookCard({ book }: { book: Book }) {
       ]}
     >
       {/* Cover */}
-      <View style={[styles.cover, { backgroundColor: book.coverColor, borderRadius: colors.radius - 4 }]}>
-        <Text style={styles.coverLetter}>{book.title.charAt(0).toUpperCase()}</Text>
+      <View style={[styles.cover, { backgroundColor: book.coverUrl ? undefined : book.coverColor, borderRadius: colors.radius - 4 }]}>
+        {book.coverUrl ? (
+          <Image
+            source={{ uri: book.coverUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <Text style={styles.coverLetter}>{book.title.charAt(0).toUpperCase()}</Text>
+        )}
       </View>
 
       {/* Info */}

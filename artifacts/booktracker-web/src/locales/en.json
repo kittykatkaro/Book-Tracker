@@ -98,7 +98,8 @@
     "setImportAdd_other": "Add {{count}} books",
     "setImportReset": "Start over",
     "setImportSuccess": "{{count}} book added to your library!",
-    "setImportSuccess_other": "{{count}} books added to your library!"
+    "setImportSuccess_other": "{{count}} books added to your library!",
+    "coverPreview": "Cover preview"
   },
   "stats": {
     "title": "Reading Stats",
@@ -246,7 +247,15 @@
     "started": "Started",
     "finished": "Finished",
     "complete": "complete",
-    "pageOf": "/ {{pages}}"
+    "pageOf": "/ {{pages}}",
+    "changeCover": "Change cover",
+    "removeCover": "Remove cover",
+    "coverTabUrl": "Image URL",
+    "coverTabUpload": "Upload",
+    "coverUrlPlaceholder": "https://example.com/cover.jpg",
+    "coverSave": "Save cover",
+    "coverUploading": "Uploading…",
+    "coverUploadBtn": "Choose image"
   },
   "importDialog": {
     "titleUpload": "Import your library",

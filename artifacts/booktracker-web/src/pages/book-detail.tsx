@@ -23,8 +23,15 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
-import { ArrowLeft, Trash2, Calendar, Star, BookOpen, Clock } from "lucide-react"
+import { ArrowLeft, Trash2, Calendar, Star, BookOpen, Clock, Camera, Link2, X, Loader2 } from "lucide-react"
 
 export function BookDetail() {
   const { t } = useTranslation()
@@ -103,6 +110,53 @@ export function BookDetail() {
     })
   }
 
+  // --- Cover change state ---
+  const [coverDialogOpen, setCoverDialogOpen] = useState(false)
+  const [coverUrlInput, setCoverUrlInput] = useState("")
+  const [coverSaving, setCoverSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const invalidateBoth = () => {
+    queryClient.invalidateQueries({ queryKey: getGetBookQueryKey(id!) })
+    queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
+  }
+
+  const handleSaveCoverUrl = async () => {
+    if (!coverUrlInput.trim()) return
+    setCoverSaving(true)
+    try {
+      await updateBook.mutateAsync({ id: id!, data: { coverUrl: coverUrlInput.trim() } })
+      invalidateBoth()
+      setCoverDialogOpen(false)
+      setCoverUrlInput("")
+    } finally {
+      setCoverSaving(false)
+    }
+  }
+
+  const handleFileUpload = async (file: File) => {
+    setCoverSaving(true)
+    try {
+      const formData = new FormData()
+      formData.append("cover", file)
+      const result = await fetch(`/api/books/${id}/cover`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      })
+      if (!result.ok) throw new Error("Upload failed")
+      invalidateBoth()
+      setCoverDialogOpen(false)
+    } finally {
+      setCoverSaving(false)
+    }
+  }
+
+  const handleRemoveCover = async () => {
+    await updateBook.mutateAsync({ id: id!, data: { coverUrl: null } })
+    invalidateBoth()
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-8 animate-pulse">
@@ -165,12 +219,75 @@ export function BookDetail() {
         <div className="md:col-span-4 lg:col-span-3 space-y-6">
           <div 
             className="w-full aspect-[2/3] rounded-2xl flex items-center justify-center relative overflow-hidden shadow-xl"
-            style={{ backgroundColor: book.coverColor }}
+            style={{ backgroundColor: book.coverUrl ? undefined : book.coverColor }}
           >
-            <span className="text-9xl font-serif text-white/90 drop-shadow-lg font-bold">{initial}</span>
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/50 to-transparent opacity-60 mix-blend-multiply"></div>
-            <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-2xl pointer-events-none"></div>
+            {book.coverUrl ? (
+              <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+            ) : (
+              <>
+                <span className="text-9xl font-serif text-white/90 drop-shadow-lg font-bold">{initial}</span>
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/50 to-transparent opacity-60 mix-blend-multiply"></div>
+                <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-2xl pointer-events-none"></div>
+              </>
+            )}
           </div>
+
+          {/* Change cover controls */}
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" size="sm" className="w-full gap-2 rounded-full text-muted-foreground" onClick={() => setCoverDialogOpen(true)}>
+              <Camera className="h-4 w-4" />
+              {t("bookDetail.changeCover")}
+            </Button>
+            {book.coverUrl && (
+              <Button variant="ghost" size="sm" className="w-full gap-2 rounded-full text-destructive hover:text-destructive text-xs" onClick={handleRemoveCover}>
+                <X className="h-3.5 w-3.5" />
+                {t("bookDetail.removeCover")}
+              </Button>
+            )}
+          </div>
+
+          {/* Change cover dialog */}
+          <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="font-serif">{t("bookDetail.changeCover")}</DialogTitle>
+              </DialogHeader>
+              <Tabs defaultValue="url">
+                <TabsList className="w-full">
+                  <TabsTrigger value="url" className="flex-1 gap-1.5"><Link2 className="h-3.5 w-3.5" />{t("bookDetail.coverTabUrl")}</TabsTrigger>
+                  <TabsTrigger value="upload" className="flex-1 gap-1.5"><Camera className="h-3.5 w-3.5" />{t("bookDetail.coverTabUpload")}</TabsTrigger>
+                </TabsList>
+                <TabsContent value="url" className="space-y-4 pt-4">
+                  <Input
+                    placeholder={t("bookDetail.coverUrlPlaceholder")}
+                    value={coverUrlInput}
+                    onChange={(e) => setCoverUrlInput(e.target.value)}
+                  />
+                  {coverUrlInput && (
+                    <div className="w-full aspect-[2/3] rounded-lg overflow-hidden border border-border/50">
+                      <img src={coverUrlInput} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    </div>
+                  )}
+                  <Button className="w-full rounded-full" onClick={handleSaveCoverUrl} disabled={!coverUrlInput.trim() || coverSaving}>
+                    {coverSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("bookDetail.coverSave")}
+                  </Button>
+                </TabsContent>
+                <TabsContent value="upload" className="space-y-4 pt-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f) }}
+                  />
+                  <Button variant="outline" className="w-full rounded-full gap-2" onClick={() => fileInputRef.current?.click()} disabled={coverSaving}>
+                    {coverSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                    {coverSaving ? t("bookDetail.coverUploading") : t("bookDetail.coverUploadBtn")}
+                  </Button>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
           
           <div className="bg-white/50 dark:bg-black/20 rounded-xl p-4 border border-border/50 space-y-3">
             <div className="flex items-center text-xs text-muted-foreground">

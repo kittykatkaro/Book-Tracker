@@ -46,6 +46,7 @@ export default function AddBookScreen() {
   const [genre, setGenre] = useState('');
   const [pages, setPages] = useState('');
   const [isbn, setIsbn] = useState('');
+  const [lookedUpCoverUrl, setLookedUpCoverUrl] = useState<string | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResult, setLookupResult] = useState<'success' | 'error' | null>(null);
 
@@ -80,6 +81,7 @@ export default function AddBookScreen() {
       status,
       genre: genre || undefined,
       pages: pages ? parseInt(pages, 10) : undefined,
+      coverUrl: lookedUpCoverUrl ?? null,
     });
     router.back();
   };
@@ -98,6 +100,7 @@ export default function AddBookScreen() {
         const matched = GENRES.find((g) => g.toLowerCase() === result.genre?.toLowerCase());
         setGenre(matched ?? '');
       }
+      setLookedUpCoverUrl(result.coverUrl ?? null);
       setLookupResult('success');
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {

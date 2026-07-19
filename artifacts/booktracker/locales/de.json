@@ -89,7 +89,17 @@
     "notesPlaceholder": "Notizen, Zitate oder Gedanken hinzufügen...",
     "saveChanges": "Änderungen speichern",
     "started": "Begonnen",
-    "finished": "Beendet"
+    "finished": "Beendet",
+    "changeCover": "Cover ändern",
+    "coverOptionUrl": "Bild-URL einfügen",
+    "coverOptionLibrary": "Aus Fotomediathek wählen",
+    "coverOptionRemove": "Cover entfernen",
+    "coverUrlModalTitle": "Cover-Bild-URL",
+    "coverUrlPlaceholder": "https://beispiel.de/cover.jpg",
+    "coverSave": "Speichern",
+    "cancel": "Abbrechen",
+    "coverPermissionDenied": "Zugriff auf Fotomediathek verweigert",
+    "coverUploadError": "Upload fehlgeschlagen. Bitte erneut versuchen."
   },
   "addBook": {
     "title": "Buch hinzufügen",

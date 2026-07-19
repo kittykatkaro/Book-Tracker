@@ -55,6 +55,7 @@ interface ClubBook {
   title: string;
   author: string;
   coverColor: string;
+  coverUrl?: string | null;
   isbn: string | null;
   pages: number | null;
   genre: string | null;
@@ -585,10 +586,14 @@ function BookDiscussion({ club, book, currentUserId }: { club: ClubDetail; book:
     <>
       <div className="flex items-center gap-3 p-4 bg-secondary/40 rounded-xl">
         <div
-          className="w-10 h-14 rounded-md shrink-0 flex items-center justify-center"
-          style={{ backgroundColor: book.coverColor }}
+          className="w-10 h-14 rounded-md shrink-0 flex items-center justify-center overflow-hidden"
+          style={{ backgroundColor: book.coverUrl ? undefined : book.coverColor }}
         >
-          <span className="text-white font-bold text-lg">{book.title.charAt(0)}</span>
+          {book.coverUrl ? (
+            <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-white font-bold text-lg">{book.title.charAt(0)}</span>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-serif font-semibold leading-tight line-clamp-1">{book.title}</h3>
