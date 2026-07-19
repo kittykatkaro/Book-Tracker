@@ -255,7 +255,20 @@
     "coverUrlPlaceholder": "https://example.com/cover.jpg",
     "coverSave": "Save cover",
     "coverUploading": "Uploading…",
-    "coverUploadBtn": "Choose image"
+    "coverUploadBtn": "Choose image",
+    "editDialog": {
+      "title": "Edit book",
+      "description": "Update this book's details.",
+      "titleLabel": "Title",
+      "authorLabel": "Author",
+      "genreLabel": "Genre",
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "successTitle": "Book updated!",
+      "errorTitle": "Couldn't save changes",
+      "errorDesc": "Something went wrong updating this book. Please try again."
+    }
   },
   "importDialog": {
     "titleUpload": "Import your library",

@@ -255,7 +255,20 @@
     "coverUrlPlaceholder": "https://beispiel.de/cover.jpg",
     "coverSave": "Cover speichern",
     "coverUploading": "Wird hochgeladen…",
-    "coverUploadBtn": "Bild auswählen"
+    "coverUploadBtn": "Bild auswählen",
+    "editDialog": {
+      "title": "Buch bearbeiten",
+      "description": "Aktualisiere die Angaben zu diesem Buch.",
+      "titleLabel": "Titel",
+      "authorLabel": "Autor",
+      "genreLabel": "Genre",
+      "cancel": "Abbrechen",
+      "save": "Änderungen speichern",
+      "saving": "Wird gespeichert…",
+      "successTitle": "Buch aktualisiert!",
+      "errorTitle": "Änderungen konnten nicht gespeichert werden",
+      "errorDesc": "Beim Aktualisieren dieses Buchs ist etwas schiefgelaufen. Bitte versuche es erneut."
+    }
   },
   "importDialog": {
     "titleUpload": "Bibliothek importieren",

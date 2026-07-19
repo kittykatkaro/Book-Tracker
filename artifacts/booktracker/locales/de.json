@@ -99,7 +99,13 @@
     "coverSave": "Speichern",
     "cancel": "Abbrechen",
     "coverPermissionDenied": "Zugriff auf Fotomediathek verweigert",
-    "coverUploadError": "Upload fehlgeschlagen. Bitte erneut versuchen."
+    "coverUploadError": "Upload fehlgeschlagen. Bitte erneut versuchen.",
+    "editTitle": "Buch bearbeiten",
+    "editTitleLabel": "TITEL",
+    "editAuthorLabel": "AUTOR",
+    "editSaving": "Wird gespeichert...",
+    "editErrorTitle": "Änderungen konnten nicht gespeichert werden",
+    "editErrorDesc": "Beim Aktualisieren dieses Buchs ist etwas schiefgelaufen. Bitte versuche es erneut."
   },
   "addBook": {
     "title": "Buch hinzufügen",

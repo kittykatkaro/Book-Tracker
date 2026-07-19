@@ -99,7 +99,13 @@
     "coverSave": "Save",
     "cancel": "Cancel",
     "coverPermissionDenied": "Photo library access denied",
-    "coverUploadError": "Upload failed. Please try again."
+    "coverUploadError": "Upload failed. Please try again.",
+    "editTitle": "Edit Book",
+    "editTitleLabel": "TITLE",
+    "editAuthorLabel": "AUTHOR",
+    "editSaving": "Saving...",
+    "editErrorTitle": "Couldn't save changes",
+    "editErrorDesc": "Something went wrong updating this book. Please try again."
   },
   "addBook": {
     "title": "Add Book",

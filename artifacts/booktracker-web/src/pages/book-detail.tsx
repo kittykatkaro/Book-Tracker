@@ -1,10 +1,11 @@
-import { useGetBook, useUpdateBook, useDeleteBook, getGetBookQueryKey, getListBooksQueryKey } from "@workspace/api-client-react"
+import { useGetBook, useUpdateBook, useDeleteBook, getGetBookQueryKey, getListBooksQueryKey, GENRES } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useParams, useLocation } from "wouter"
 import { Link } from "wouter"
 import { format } from "date-fns"
 import { useRef, useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { useToast } from "@/hooks/use-toast"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -23,28 +39,122 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
-import { ArrowLeft, Trash2, Calendar, Star, BookOpen, Clock, Camera, Link2, X, Loader2 } from "lucide-react"
+import { ArrowLeft, Trash2, Calendar, Star, BookOpen, Clock, Camera, Link2, X, Loader2, Pencil } from "lucide-react"
+
+const NO_GENRE = "__none__"
+
+// ---------------------------------------------------------------------------
+// Edit Book Dialog
+// ---------------------------------------------------------------------------
+
+interface EditableBook {
+  title: string
+  author: string
+  genre: string | null
+}
+
+function EditBookDialog({
+  book,
+  open,
+  onClose,
+  onSave,
+  saving,
+}: {
+  book: EditableBook
+  open: boolean
+  onClose: () => void
+  onSave: (data: EditableBook) => void
+  saving: boolean
+}) {
+  const { t } = useTranslation()
+  const [title, setTitle] = useState(book.title)
+  const [author, setAuthor] = useState(book.author)
+  const [genre, setGenre] = useState(book.genre || "")
+
+  useEffect(() => {
+    if (open) {
+      setTitle(book.title)
+      setAuthor(book.author)
+      setGenre(book.genre || "")
+    }
+  }, [open, book])
+
+  const handleSave = () => {
+    onSave({
+      title: title.trim(),
+      author: author.trim(),
+      genre: genre || null,
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="font-serif">{t("bookDetail.editDialog.title")}</DialogTitle>
+          <DialogDescription>{t("bookDetail.editDialog.description")}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-title">{t("bookDetail.editDialog.titleLabel")}</Label>
+            <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="input-edit-title" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-author">{t("bookDetail.editDialog.authorLabel")}</Label>
+            <Input id="edit-author" value={author} onChange={(e) => setAuthor(e.target.value)} data-testid="input-edit-author" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("bookDetail.editDialog.genreLabel")}</Label>
+            <Select
+              onValueChange={(v) => setGenre(v === NO_GENRE ? "" : v)}
+              value={genre || NO_GENRE}
+            >
+              <SelectTrigger data-testid="select-edit-genre">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_GENRE}>{t("addBook.genreNone")}</SelectItem>
+                {GENRES.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={onClose} disabled={saving}>{t("bookDetail.editDialog.cancel")}</Button>
+            <Button
+              onClick={handleSave}
+              disabled={!title.trim() || !author.trim() || saving}
+              data-testid="button-save-edit"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {saving ? t("bookDetail.editDialog.saving") : t("bookDetail.editDialog.save")}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function BookDetail() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
-  
+  const { toast } = useToast()
+
   const { data: book, isLoading } = useGetBook(id!, { query: { queryKey: getGetBookQueryKey(id!) } })
   const updateBook = useUpdateBook()
   const deleteBook = useDeleteBook()
 
   const [notes, setNotes] = useState("")
   const [currentPage, setCurrentPage] = useState<string>("")
+  const [editOpen, setEditOpen] = useState(false)
   const initializedForId = useRef<string | null>(null)
   const saveTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -107,6 +217,24 @@ export function BookDetail() {
         queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
         setLocation("/")
       }
+    })
+  }
+
+  const handleEditSave = (data: { title: string; author: string; genre: string | null }) => {
+    updateBook.mutate({ id: id!, data }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetBookQueryKey(id!) })
+        queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
+        setEditOpen(false)
+        toast({ title: t("bookDetail.editDialog.successTitle") })
+      },
+      onError: () => {
+        toast({
+          title: t("bookDetail.editDialog.errorTitle"),
+          description: t("bookDetail.editDialog.errorDesc"),
+          variant: "destructive",
+        })
+      },
     })
   }
 
@@ -191,7 +319,17 @@ export function BookDetail() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t("bookDetail.backToLibrary")}
         </Link>
-        <AlertDialog>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={() => setEditOpen(true)}
+            data-testid="button-edit-trigger"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" data-testid="button-delete-trigger">
               <Trash2 className="h-4 w-4" />
@@ -211,8 +349,17 @@ export function BookDetail() {
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>
+          </AlertDialog>
+        </div>
       </div>
+
+      <EditBookDialog
+        book={{ title: book.title, author: book.author, genre: book.genre ?? null }}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSave={handleEditSave}
+        saving={updateBook.isPending}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
         {/* Cover Column */}

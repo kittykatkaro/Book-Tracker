@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useBooks, BookStatus } from '@/context/BooksContext';
+import { GENRES } from '@workspace/api-client-react';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -35,7 +36,7 @@ export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getBook, updateBook, deleteBook } = useBooks();
+  const { getBook, updateBook, deleteBook, isUpdating } = useBooks();
 
   const book = getBook(id);
   const [notes, setNotes] = useState(book?.notes ?? '');
@@ -47,8 +48,43 @@ export default function BookDetailScreen() {
   const [coverUrlInput, setCoverUrlInput] = useState('');
   const [coverSaving, setCoverSaving] = useState(false);
 
+  // Edit book state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
+  const [editGenre, setEditGenre] = useState('');
+
   useEffect(() => { if (!book) router.back(); }, [book]);
   if (!book) return null;
+
+  const openEdit = () => {
+    setEditTitle(book.title);
+    setEditAuthor(book.author);
+    setEditGenre(book.genre ?? '');
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTitle.trim() || !editAuthor.trim()) return;
+    updateBook(
+      id,
+      {
+        title: editTitle.trim(),
+        author: editAuthor.trim(),
+        genre: editGenre || undefined,
+      },
+      {
+        onSuccess: () => {
+          if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setEditOpen(false);
+        },
+        onError: () => {
+          if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert(t('bookDetail.editErrorTitle'), t('bookDetail.editErrorDesc'));
+        },
+      },
+    );
+  };
 
   const STATUS_OPTIONS: { value: BookStatus; label: string; icon: string }[] = [
     { value: 'want_to_read', label: t('bookDetail.statusWantToRead'), icon: 'bookmark' },
@@ -168,9 +204,14 @@ export default function BookDetailScreen() {
         <Pressable onPress={() => router.back()} style={styles.navBtn}>
           <Feather name="chevron-left" size={24} color={colors.foreground} />
         </Pressable>
-        <Pressable onPress={handleDelete} style={styles.navBtn}>
-          <Feather name="trash-2" size={20} color={colors.destructive} />
-        </Pressable>
+        <View style={{ flexDirection: 'row' }}>
+          <Pressable onPress={openEdit} style={styles.navBtn}>
+            <Feather name="edit-2" size={19} color={colors.foreground} />
+          </Pressable>
+          <Pressable onPress={handleDelete} style={styles.navBtn}>
+            <Feather name="trash-2" size={20} color={colors.destructive} />
+          </Pressable>
+        </View>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -335,6 +376,77 @@ export default function BookDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit book modal */}
+      <Modal visible={editOpen} animationType="slide" transparent onRequestClose={() => setEditOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <KeyboardAvoidingView
+            style={{ width: '100%' }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('bookDetail.editTitle')}</Text>
+
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{t('bookDetail.editTitleLabel')}</Text>
+                <TextInput
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  style={[styles.modalInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground, marginTop: 14 }]}>{t('bookDetail.editAuthorLabel')}</Text>
+                <TextInput
+                  value={editAuthor}
+                  onChangeText={setEditAuthor}
+                  style={[styles.modalInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground, marginTop: 14 }]}>{t('addBook.genreLabel')}</Text>
+                <View style={styles.editGenreRow}>
+                  {GENRES.map((g) => {
+                    const active = editGenre === g;
+                    return (
+                      <Pressable
+                        key={g}
+                        onPress={() => setEditGenre(active ? '' : g)}
+                        style={[
+                          styles.editGenreBtn,
+                          { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + '15' : colors.secondary },
+                        ]}
+                      >
+                        <Text style={[styles.editGenreText, { color: active ? colors.primary : colors.mutedForeground }]}>{g}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <Pressable
+                  onPress={() => setEditOpen(false)}
+                  disabled={isUpdating}
+                  style={[styles.modalBtn, { backgroundColor: colors.secondary, opacity: isUpdating ? 0.5 : 1 }]}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.foreground }]}>{t('bookDetail.cancel')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleSaveEdit}
+                  disabled={!editTitle.trim() || !editAuthor.trim() || isUpdating}
+                  style={[styles.modalBtn, { backgroundColor: colors.primary, opacity: !editTitle.trim() || !editAuthor.trim() || isUpdating ? 0.5 : 1, flexDirection: 'row', justifyContent: 'center', gap: 8 }]}
+                >
+                  {isUpdating && <ActivityIndicator size="small" color={colors.primaryForeground} />}
+                  <Text style={[styles.modalBtnText, { color: colors.primaryForeground }]}>
+                    {isUpdating ? t('bookDetail.editSaving') : t('bookDetail.saveChanges')}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -372,7 +484,7 @@ const styles = StyleSheet.create({
   dateValue: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   saveBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
   saveBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  // Modal
+  // Cover URL modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 24, gap: 16 },
   modalTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
@@ -381,4 +493,11 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   modalBtnPrimary: { borderWidth: 0 },
   modalBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  // Edit book modal
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalCard: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderBottomWidth: 0, padding: 20, maxHeight: '85%' },
+  fieldLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
+  editGenreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  editGenreBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  editGenreText: { fontSize: 13, fontFamily: 'Inter_400Regular' },
 });

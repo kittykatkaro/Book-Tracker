@@ -50,8 +50,9 @@ function toBook(b: ApiBook): Book {
 interface BooksContextType {
   books: Book[];
   isLoading: boolean;
+  isUpdating: boolean;
   addBook: (book: Omit<Book, 'id' | 'dateAdded' | 'coverColor'>) => void;
-  updateBook: (id: string, updates: Partial<Book>) => void;
+  updateBook: (id: string, updates: Partial<Book>, options?: { onSuccess?: () => void; onError?: () => void }) => void;
   deleteBook: (id: string) => void;
   getBook: (id: string) => Book | undefined;
 }
@@ -95,7 +96,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateBook = useCallback(
-    (id: string, updates: Partial<Book>) => {
+    (id: string, updates: Partial<Book>, options?: { onSuccess?: () => void; onError?: () => void }) => {
       updateMutation.mutate(
         {
           id,
@@ -113,7 +114,15 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
             ...('dateFinished' in updates && { dateFinished: updates.dateFinished ?? null }),
           },
         },
-        { onSuccess: invalidate },
+        {
+          onSuccess: () => {
+            invalidate();
+            options?.onSuccess?.();
+          },
+          onError: () => {
+            options?.onError?.();
+          },
+        },
       );
     },
     [updateMutation, invalidate],
@@ -132,7 +141,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <BooksContext.Provider value={{ books, isLoading, addBook, updateBook, deleteBook, getBook }}>
+    <BooksContext.Provider value={{ books, isLoading, isUpdating: updateMutation.isPending, addBook, updateBook, deleteBook, getBook }}>
       {children}
     </BooksContext.Provider>
   );
