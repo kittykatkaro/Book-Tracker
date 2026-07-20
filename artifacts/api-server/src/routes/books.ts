@@ -1,4 +1,9 @@
-import { Router, type Request, type Response, type NextFunction } from "express";
+import {
+  Router,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import { eq, desc, and, or, isNull } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import multer from "multer";
@@ -11,8 +16,16 @@ import { objectStorageClient } from "../lib/objectStorage.js";
 const router = Router();
 
 const COVER_COLORS = [
-  "#2D6A4F", "#C8873F", "#5856D6", "#E55A4E", "#4A90D9",
-  "#8B5CF6", "#D4792A", "#1D7A7A", "#B5451B", "#4C7B58",
+  "#2D6A4F",
+  "#C8873F",
+  "#5856D6",
+  "#E55A4E",
+  "#4A90D9",
+  "#8B5CF6",
+  "#D4792A",
+  "#1D7A7A",
+  "#B5451B",
+  "#4C7B58",
 ];
 
 function generateId(): string {
@@ -55,13 +68,19 @@ function runCoverMulter(req: Request, res: Response): Promise<void> {
   });
 }
 
-function parseGcsPath(path: string): { bucketName: string; objectName: string } {
+function parseGcsPath(path: string): {
+  bucketName: string;
+  objectName: string;
+} {
   const normalised = path.startsWith("/") ? path : `/${path}`;
   const parts = normalised.split("/");
   return { bucketName: parts[1], objectName: parts.slice(2).join("/") };
 }
 
-async function uploadCoverToGcs(buffer: Buffer, mimetype: string): Promise<string> {
+async function uploadCoverToGcs(
+  buffer: Buffer,
+  mimetype: string,
+): Promise<string> {
   const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
   if (!privateObjectDir) throw new Error("PRIVATE_OBJECT_DIR not set");
   const id = randomUUID();
@@ -130,10 +149,14 @@ router.get("/stats", requireAuth, async (req, res) => {
     const ratedBooks = books.filter((b) => b.rating != null);
     const avgRating =
       ratedBooks.length > 0
-        ? ratedBooks.reduce((s, b) => s + (b.rating ?? 0), 0) / ratedBooks.length
+        ? ratedBooks.reduce((s, b) => s + (b.rating ?? 0), 0) /
+          ratedBooks.length
         : null;
 
-    const topGenres = aggregateGenreCounts(books.map((b) => b.genre)).slice(0, 6);
+    const topGenres = aggregateGenreCounts(books.map((b) => b.genre)).slice(
+      0,
+      6,
+    );
 
     return res.json({
       total: books.length,
@@ -164,7 +187,9 @@ router.get("/isbn-lookup", async (req, res) => {
 
   const cleanIsbn = isbn.replace(/[^0-9Xx]/g, "");
   if (cleanIsbn.length < 10)
-    return res.status(400).json({ error: "Invalid ISBN — must be 10 or 13 digits" });
+    return res
+      .status(400)
+      .json({ error: "Invalid ISBN — must be 10 or 13 digits" });
 
   try {
     const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`;
@@ -176,12 +201,21 @@ router.get("/isbn-lookup", async (req, res) => {
 
     const book = data[key] as Record<string, unknown>;
     const authors = Array.isArray(book.authors)
-      ? (book.authors as { name?: string }[]).map((a) => a.name).filter(Boolean).join(", ")
+      ? (book.authors as { name?: string }[])
+          .map((a) => a.name)
+          .filter(Boolean)
+          .join(", ")
       : "";
-    const subjects = book.subjects as { name?: string }[] | string[] | undefined;
+    const subjects = book.subjects as
+      | { name?: string }[]
+      | string[]
+      | undefined;
     const genre = classifyGenre(subjects);
     const publishYear = book.publish_date
-      ? (() => { const m = String(book.publish_date).match(/\d{4}/); return m ? parseInt(m[0], 10) : null; })()
+      ? (() => {
+          const m = String(book.publish_date).match(/\d{4}/);
+          return m ? parseInt(m[0], 10) : null;
+        })()
       : null;
     const cover = book.cover as Record<string, string> | undefined;
 
@@ -219,13 +253,22 @@ router.post("/isbn-bulk-lookup", async (req, res) => {
       if (!data[key]) return { isbn: clean, status: "not_found" as const };
       const book = data[key] as Record<string, unknown>;
       const authors = Array.isArray(book.authors)
-        ? (book.authors as { name?: string }[]).map((a) => a.name).filter(Boolean).join(", ")
+        ? (book.authors as { name?: string }[])
+            .map((a) => a.name)
+            .filter(Boolean)
+            .join(", ")
         : "";
-      const subjects = book.subjects as { name?: string }[] | string[] | undefined;
+      const subjects = book.subjects as
+        | { name?: string }[]
+        | string[]
+        | undefined;
       const genre = classifyGenre(subjects);
       const cover = book.cover as Record<string, string> | undefined;
       const publishYear = book.publish_date
-        ? (() => { const m = String(book.publish_date).match(/\d{4}/); return m ? parseInt(m[0], 10) : null; })()
+        ? (() => {
+            const m = String(book.publish_date).match(/\d{4}/);
+            return m ? parseInt(m[0], 10) : null;
+          })()
         : null;
       return {
         isbn: clean,
@@ -238,7 +281,10 @@ router.post("/isbn-bulk-lookup", async (req, res) => {
         publishYear,
       };
     } catch {
-      return { isbn: String(isbn).replace(/[^0-9Xx]/g, ""), status: "error" as const };
+      return {
+        isbn: String(isbn).replace(/[^0-9Xx]/g, ""),
+        status: "error" as const,
+      };
     }
   }
 
@@ -251,14 +297,21 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
     const data = req.body as {
-      title: string; author: string; status: string;
-      rating?: number | null; pages?: number | null;
-      currentPage?: number | null; notes?: string | null; genre?: string | null;
+      title: string;
+      author: string;
+      status: string;
+      rating?: number | null;
+      pages?: number | null;
+      currentPage?: number | null;
+      notes?: string | null;
+      genre?: string | null;
       coverUrl?: string | null;
     };
 
     if (!data.title || !data.author || !data.status) {
-      return res.status(400).json({ error: "title, author and status are required" });
+      return res
+        .status(400)
+        .json({ error: "title, author and status are required" });
     }
 
     const now = new Date();
@@ -278,7 +331,8 @@ router.post("/", requireAuth, async (req, res) => {
         notes: data.notes ?? null,
         genre: data.genre ?? null,
         dateAdded: now,
-        dateStarted: data.status === "reading" || data.status === "read" ? now : null,
+        dateStarted:
+          data.status === "reading" || data.status === "read" ? now : null,
         dateFinished: data.status === "read" ? now : null,
       })
       .returning();
@@ -296,7 +350,9 @@ router.get("/:id", requireAuth, async (req, res) => {
     const [book] = await db
       .select()
       .from(booksTable)
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)));
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      );
     if (!book) return res.status(404).json({ error: "Not found" });
     return res.json(formatBook(book));
   } catch (err) {
@@ -311,15 +367,23 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const [existing] = await db
       .select()
       .from(booksTable)
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)));
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      );
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     const data = req.body as {
-      title?: string; author?: string; status?: string;
-      rating?: number | null; pages?: number | null;
-      currentPage?: number | null; notes?: string | null; genre?: string | null;
+      title?: string;
+      author?: string;
+      status?: string;
+      rating?: number | null;
+      pages?: number | null;
+      currentPage?: number | null;
+      notes?: string | null;
+      genre?: string | null;
       coverUrl?: string | null;
-      dateStarted?: string | null; dateFinished?: string | null;
+      dateStarted?: string | null;
+      dateFinished?: string | null;
     };
 
     const updates: Partial<typeof booksTable.$inferInsert> = {};
@@ -327,7 +391,8 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if (data.author !== undefined) updates.author = data.author;
     if (data.status !== undefined) {
       updates.status = data.status;
-      if (data.status === "reading" && !existing.dateStarted) updates.dateStarted = new Date();
+      if (data.status === "reading" && !existing.dateStarted)
+        updates.dateStarted = new Date();
       if (data.status === "read") {
         if (!existing.dateStarted) updates.dateStarted = new Date();
         if (!existing.dateFinished) updates.dateFinished = new Date();
@@ -340,14 +405,20 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if ("genre" in data) updates.genre = data.genre ?? null;
     if ("coverUrl" in data) updates.coverUrl = data.coverUrl ?? null;
     if ("dateStarted" in data)
-      updates.dateStarted = data.dateStarted ? new Date(data.dateStarted) : null;
+      updates.dateStarted = data.dateStarted
+        ? new Date(data.dateStarted)
+        : null;
     if ("dateFinished" in data)
-      updates.dateFinished = data.dateFinished ? new Date(data.dateFinished) : null;
+      updates.dateFinished = data.dateFinished
+        ? new Date(data.dateFinished)
+        : null;
 
     const [book] = await db
       .update(booksTable)
       .set(updates)
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)))
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      )
       .returning();
 
     return res.json(formatBook(book));
@@ -363,7 +434,11 @@ router.post("/enrich-all", requireAuth, async (req, res) => {
 
     // Find books owned by this user that are missing pages OR genre
     const toEnrich = await db
-      .select({ id: booksTable.id, title: booksTable.title, author: booksTable.author })
+      .select({
+        id: booksTable.id,
+        title: booksTable.title,
+        author: booksTable.author,
+      })
       .from(booksTable)
       .where(
         and(
@@ -377,7 +452,9 @@ router.post("/enrich-all", requireAuth, async (req, res) => {
     }
 
     // Fire-and-forget — do NOT await
-    enrichBooksInBackground(toEnrich).catch(() => {/* swallow */});
+    enrichBooksInBackground(toEnrich).catch(() => {
+      /* swallow */
+    });
 
     return res.json({ enriching: toEnrich.length });
   } catch (err) {
@@ -398,15 +475,22 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
   try {
-    const [existing] = await db.select().from(booksTable)
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)));
+    const [existing] = await db
+      .select()
+      .from(booksTable)
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      );
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     const publicUrl = await uploadCoverToGcs(file.buffer, file.mimetype);
 
-    const [book] = await db.update(booksTable)
+    const [book] = await db
+      .update(booksTable)
       .set({ coverUrl: publicUrl })
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)))
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      )
       .returning();
 
     return res.json({ coverUrl: publicUrl, book: formatBook(book) });
@@ -423,12 +507,16 @@ router.delete("/:id", requireAuth, async (req, res) => {
     const [existing] = await db
       .select()
       .from(booksTable)
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)));
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      );
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     await db
       .delete(booksTable)
-      .where(and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)));
+      .where(
+        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+      );
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to delete book" });

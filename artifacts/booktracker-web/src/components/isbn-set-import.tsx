@@ -152,6 +152,7 @@ export function IsbnSetImport() {
               status: b.selectedStatus,
               pages: b.pages ?? null,
               genre: b.genre ?? null,
+              coverUrl: b.coverUrl ?? null,
             },
           }),
         ),
