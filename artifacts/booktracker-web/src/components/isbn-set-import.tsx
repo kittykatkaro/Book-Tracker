@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { IsbnScannerDialog } from "@/components/isbn-scanner";
 import { cn } from "@/lib/utils";
+const [error, setError] = useState<string | null>(null);
 
 type BookStatus = "want_to_read" | "reading" | "read";
 
@@ -59,31 +60,53 @@ export function IsbnSetImport() {
       .slice(0, 20);
   };
 
+  // Updated handleScan to use functional state updates (prevents stale closures)
   const handleScan = (isbn: string) => {
     setScannerOpen(false);
     const clean = isbn.replace(/[^0-9Xx]/g, "");
-    if (!clean || scannedIsbns.includes(clean)) return;
-    setScannedIsbns((prev) => [...prev, clean]);
-    setIsbnText((prev) => (prev ? `${prev}\n${clean}` : clean));
+    if (!clean) return;
+
+    setScannedIsbns((prev) => {
+      if (prev.includes(clean)) return prev;
+      return [...prev, clean];
+    });
+
+    setIsbnText((prev) => {
+      if (prev.includes(clean)) return prev;
+      return prev ? `${prev}\n${clean}` : clean;
+    });
   };
 
+  // Updated handleLookup to safely parse API responses and catch errors
   const handleLookup = useCallback(async () => {
     const isbns = parseIsbns(isbnText);
     if (!isbns.length) return;
+
     setLoading(true);
     setBooks([]);
     setImportDone(false);
+    setError(null); // Clear previous errors
+
     try {
-      const { results } = await bulkLookupIsbn(isbns);
+      const response = await bulkLookupIsbn(isbns);
+
+      // Fallback safely whether the API returns an array directly, or an object containing results
+      // We removed response?.data to satisfy the IsbnBulkResult TypeScript definition
+      const resultsList = Array.isArray(response) 
+        ? response 
+        : response?.results || [];
+
       setBooks(
-        results.map((r) => ({
+        resultsList.map((r: any) => ({
           ...r,
           selectedStatus: "want_to_read",
           selected: r.status === "found",
         })),
       );
-    } catch {
-      // surface nothing — individual statuses will show "error"
+    } catch (err: any) {
+      console.error("Failed to lookup ISBNs:", err);
+      // Surface the error so it doesn't fail silently
+      setError(err?.message || "An error occurred while looking up ISBNs. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -151,19 +174,28 @@ export function IsbnSetImport() {
 
   return (
     <div className="space-y-6">
-      {/* ISBN entry */}
-      {books.length === 0 && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {t("addBook.setImportHint")}
-          </p>
-          <Textarea
-            value={isbnText}
-            onChange={(e) => setIsbnText(e.target.value)}
-            placeholder={t("addBook.setImportPlaceholder")}
-            rows={5}
-            className="font-mono text-sm resize-none"
-          />
+          {/* ISBN entry */}
+          {books.length === 0 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {t("addBook.setImportHint")}
+              </p>
+              <Textarea
+                value={isbnText}
+                onChange={(e) => setIsbnText(e.target.value)}
+                placeholder={t("addBook.setImportPlaceholder")}
+                rows={5}
+                className="font-mono text-sm resize-none"
+              />
+
+              {/* ADD THIS ERROR BLOCK */}
+              {error && (
+                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <p>{error}</p>
+                </div>
+              )}
+              {/* END ERROR BLOCK */}
           <div className="flex gap-2">
             <Button
               type="button"
