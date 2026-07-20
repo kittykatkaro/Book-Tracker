@@ -444,21 +444,34 @@ router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+    const { userId } = req as AuthedRequest; // Get the currently logged-in user
 
-    // Use booksTable and treat the ID as a string
+    // 1. Log the incoming request to see what the server is receiving
+    console.log(`[PATCH] Attempting to update book ID: ${id}`);
+    console.log(`[PATCH] Data received from frontend:`, updateData);
+
+    // 2. Update the book, ensuring both the ID and the User ID match
     const [updatedBook] = await db
       .update(booksTable)
       .set(updateData)
-      .where(eq(booksTable.id, id as string))
+      .where(
+        and(
+          eq(booksTable.id, id as string),
+          eq(booksTable.userId, userId as string) // Security: Must own the book
+        )
+      )
       .returning();
 
+    // 3. Log the result
     if (!updatedBook) {
+      console.log(`[PATCH] Failed: Book not found, or user doesn't own it.`);
       return res.status(404).json({ error: "Book not found" });
     }
 
+    console.log(`[PATCH] Success! Book updated.`);
     return res.json(formatBook(updatedBook)); 
   } catch (error) {
-    console.error("Error updating book:", error);
+    console.error("[PATCH] Error updating book:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
