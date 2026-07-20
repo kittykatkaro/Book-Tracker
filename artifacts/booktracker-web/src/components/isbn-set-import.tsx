@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -28,7 +29,6 @@ import {
 } from "lucide-react";
 import { IsbnScannerDialog } from "@/components/isbn-scanner";
 import { cn } from "@/lib/utils";
-const [error, setError] = useState<string | null>(null);
 
 type BookStatus = "want_to_read" | "reading" | "read";
 
@@ -50,6 +50,7 @@ export function IsbnSetImport() {
   const [books, setBooks] = useState<BookEntry[]>([]);
   const [importing, setImporting] = useState(false);
   const [importDone, setImportDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   /** Parse ISBNs from free-form text (commas, spaces, newlines as separators) */
   const parseIsbns = (text: string): string[] => {
@@ -60,7 +61,6 @@ export function IsbnSetImport() {
       .slice(0, 20);
   };
 
-  // Updated handleScan to use functional state updates (prevents stale closures)
   const handleScan = (isbn: string) => {
     setScannerOpen(false);
     const clean = isbn.replace(/[^0-9Xx]/g, "");
@@ -77,7 +77,6 @@ export function IsbnSetImport() {
     });
   };
 
-  // Updated handleLookup to safely parse API responses and catch errors
   const handleLookup = useCallback(async () => {
     const isbns = parseIsbns(isbnText);
     if (!isbns.length) return;
@@ -85,13 +84,12 @@ export function IsbnSetImport() {
     setLoading(true);
     setBooks([]);
     setImportDone(false);
-    setError(null); // Clear previous errors
+    setError(null);
 
     try {
       const response = await bulkLookupIsbn(isbns);
 
-      // Fallback safely whether the API returns an array directly, or an object containing results
-      // We removed response?.data to satisfy the IsbnBulkResult TypeScript definition
+      // Fallback safely depending on the API's returned shape
       const resultsList = Array.isArray(response) 
         ? response 
         : response?.results || [];
@@ -99,13 +97,12 @@ export function IsbnSetImport() {
       setBooks(
         resultsList.map((r: any) => ({
           ...r,
-          selectedStatus: "want_to_read",
-          selected: r.status === "found",
+          selectedStatus: "want_to_read", // Automatically defaults to want to read
+          selected: true, // Automatically selects the book, even if not found!
         })),
       );
     } catch (err: any) {
       console.error("Failed to lookup ISBNs:", err);
-      // Surface the error so it doesn't fail silently
       setError(err?.message || "An error occurred while looking up ISBNs. Please try again.");
     } finally {
       setLoading(false);
@@ -114,7 +111,7 @@ export function IsbnSetImport() {
 
   const applyStatusToAll = (status: BookStatus) => {
     setBooks((prev) =>
-      prev.map((b) => (b.status === "found" ? { ...b, selectedStatus: status } : b)),
+      prev.map((b) => ({ ...b, selectedStatus: status })),
     );
   };
 
@@ -130,14 +127,24 @@ export function IsbnSetImport() {
     );
   };
 
-  const selectedBooks = books.filter((b) => b.selected && b.status === "found");
+  const updateBookDetails = (isbn: string, field: "title" | "author", value: string) => {
+    setBooks((prev) =>
+      prev.map((b) => (b.isbn === isbn ? { ...b, [field]: value } : b)),
+    );
+  };
+
+  // Include ALL selected books, not just the ones with status === "found"
+  const selectedBooks = books.filter((b) => b.selected);
 
   const handleImport = async () => {
-    if (!selectedBooks.length) return;
+    // Make sure manually entered books have at least a title before importing
+    const validBooks = selectedBooks.filter(b => b.status === "found" || (b.title && b.title.trim() !== ""));
+
+    if (!validBooks.length) return;
     setImporting(true);
     try {
       await Promise.all(
-        selectedBooks.map((b) =>
+        validBooks.map((b) =>
           createBook.mutateAsync({
             data: {
               title: b.title ?? "",
@@ -174,28 +181,27 @@ export function IsbnSetImport() {
 
   return (
     <div className="space-y-6">
-          {/* ISBN entry */}
-          {books.length === 0 && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {t("addBook.setImportHint")}
-              </p>
-              <Textarea
-                value={isbnText}
-                onChange={(e) => setIsbnText(e.target.value)}
-                placeholder={t("addBook.setImportPlaceholder")}
-                rows={5}
-                className="font-mono text-sm resize-none"
-              />
+      {/* ISBN entry */}
+      {books.length === 0 && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {t("addBook.setImportHint")}
+          </p>
+          <Textarea
+            value={isbnText}
+            onChange={(e) => setIsbnText(e.target.value)}
+            placeholder={t("addBook.setImportPlaceholder")}
+            rows={5}
+            className="font-mono text-sm resize-none"
+          />
 
-              {/* ADD THIS ERROR BLOCK */}
-              {error && (
-                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <p>{error}</p>
-                </div>
-              )}
-              {/* END ERROR BLOCK */}
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <p>{error}</p>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button
               type="button"
@@ -231,7 +237,6 @@ export function IsbnSetImport() {
       {/* Results */}
       {books.length > 0 && (
         <div className="space-y-4">
-          {/* Apply-all row */}
           <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-secondary/50 border border-border/40">
             <span className="text-xs font-medium text-muted-foreground mr-1">
               {t("addBook.setMarkAll")}
@@ -265,7 +270,6 @@ export function IsbnSetImport() {
             </Button>
           </div>
 
-          {/* Book list */}
           <div className="space-y-2">
             {books.map((book) => (
               <BookRow
@@ -273,12 +277,12 @@ export function IsbnSetImport() {
                 book={book}
                 onStatusChange={(s) => setBookStatus(book.isbn, s)}
                 onToggleSelect={() => toggleSelect(book.isbn)}
+                onUpdateDetails={updateBookDetails}
                 t={t}
               />
             ))}
           </div>
 
-          {/* Footer actions */}
           <div className="flex flex-wrap gap-2 pt-2 justify-between items-center">
             <Button
               type="button"
@@ -320,34 +324,34 @@ interface BookRowProps {
   book: BookEntry;
   onStatusChange: (s: BookStatus) => void;
   onToggleSelect: () => void;
+  onUpdateDetails: (isbn: string, field: "title" | "author", value: string) => void;
   t: (key: string) => string;
 }
 
-function BookRow({ book, onStatusChange, onToggleSelect, t }: BookRowProps) {
+function BookRow({ book, onStatusChange, onToggleSelect, onUpdateDetails, t }: BookRowProps) {
   const isFound = book.status === "found";
 
   return (
     <div
       className={cn(
         "flex items-center gap-3 p-3 rounded-xl border transition-colors",
-        book.selected && isFound
+        book.selected
           ? "bg-background border-border"
           : "bg-secondary/30 border-border/30 opacity-60",
       )}
     >
-      {/* Checkbox */}
+      {/* Checkbox - now enabled for all books */}
       <button
         type="button"
         onClick={onToggleSelect}
-        disabled={!isFound}
         className={cn(
           "w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors",
-          book.selected && isFound
+          book.selected
             ? "bg-primary border-primary text-primary-foreground"
             : "border-border bg-background",
         )}
       >
-        {book.selected && isFound && <Check className="h-3 w-3" />}
+        {book.selected && <Check className="h-3 w-3" />}
       </button>
 
       {/* Book info */}
@@ -358,37 +362,50 @@ function BookRow({ book, onStatusChange, onToggleSelect, t }: BookRowProps) {
             <p className="text-xs text-muted-foreground truncate">{book.author}</p>
           </>
         ) : (
-          <div className="flex items-center gap-2">
-            {book.status === "not_found" ? (
+          <div className="flex flex-col gap-2 mr-2">
+            <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-            )}
-            <span className="text-xs text-muted-foreground font-mono">{book.isbn}</span>
-            <Badge variant="outline" className="text-xs py-0">
-              {book.status === "not_found" ? t("addBook.setImportNotFound") : t("addBook.setImportFailed")}
-            </Badge>
+              <span className="text-xs text-muted-foreground font-mono">{book.isbn}</span>
+              <Badge variant="outline" className="text-xs py-0">
+                Manual Entry
+              </Badge>
+            </div>
+            {/* Input fields for missing data */}
+            <div className="flex flex-col gap-1.5">
+              <Input 
+                placeholder="Enter Book Title" 
+                value={book.title || ""} 
+                onChange={(e) => onUpdateDetails(book.isbn, "title", e.target.value)}
+                className="h-8 text-xs bg-background"
+                disabled={!book.selected}
+              />
+              <Input 
+                placeholder="Enter Author" 
+                value={book.author || ""} 
+                onChange={(e) => onUpdateDetails(book.isbn, "author", e.target.value)}
+                className="h-8 text-xs bg-background"
+                disabled={!book.selected}
+              />
+            </div>
           </div>
         )}
       </div>
 
-      {/* Status selector — only for found books */}
-      {isFound && (
-        <Select
-          value={book.selectedStatus}
-          onValueChange={(v) => onStatusChange(v as BookStatus)}
-          disabled={!book.selected}
-        >
-          <SelectTrigger className="w-36 h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="want_to_read">{t("addBook.statusWantToRead")}</SelectItem>
-            <SelectItem value="reading">{t("addBook.statusReading")}</SelectItem>
-            <SelectItem value="read">{t("addBook.statusRead")}</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
+      {/* Status selector — available for manual entries too */}
+      <Select
+        value={book.selectedStatus}
+        onValueChange={(v) => onStatusChange(v as BookStatus)}
+        disabled={!book.selected}
+      >
+        <SelectTrigger className="w-36 h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="want_to_read">{t("addBook.statusWantToRead")}</SelectItem>
+          <SelectItem value="reading">{t("addBook.statusReading")}</SelectItem>
+          <SelectItem value="read">{t("addBook.statusRead")}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

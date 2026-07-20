@@ -3,12 +3,12 @@
  * POST /api/books/import/confirm — save selected books to the user's library
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import multer from "multer";
 import { db, booksTable } from "@workspace/db";
 import { parseCSV, parseDOCX, parsePDF, type ParsedBook } from "../import-parsers.js";
-import { lookupByTitleAuthor, enrichBooksInBackground as enrichBooks } from "../lib/enrich.js";
+import { enrichBooksInBackground as enrichBooks } from "../lib/enrich.js";
 
 const router = Router();
 
@@ -179,28 +179,33 @@ router.post("/confirm", requireAuth, async (req, res) => {
         title: book.title.trim(),
         author: book.author.trim(),
         coverColor: randomColor(),
+        // Use the status passed from the frontend, or default to want_to_read
         status: book.status ?? "want_to_read",
         rating: book.rating ?? null,
         pages: book.pages ?? null,
-        currentPage: null,
-        notes: null,
         genre: book.genre ?? null,
         dateAdded: now,
-        dateStarted: book.status === "reading" || book.status === "read" ? now : null,
-        dateFinished: book.status === "read" ? (dateRead ?? now) : null,
+        // Logic for dates
+        dateStarted: (book.status === "reading" || book.status === "read") ? now : null,
+        dateFinished: (book.status === "read") ? (dateRead ?? now) : null,
       });
+
       existingKeys.add(key);
       imported++;
 
-      // Track books that are missing pages or genre for enrichment
-      const needsEnrichment = !book.pages || !book.genre;
-      insertedForEnrichment.push({
-        id: bookId,
-        title: book.title.trim(),
-        author: book.author.trim(),
-        hasMissingFields: needsEnrichment,
-      });
-    } catch {
+      // Enrichment: only if we have an ISBN and it's missing metadata
+      const needsEnrichment = (!book.pages || !book.genre) && book.isbn;
+
+      if (needsEnrichment) {
+          insertedForEnrichment.push({
+              id: bookId,
+              title: book.title.trim(),
+              author: book.author.trim(),
+              hasMissingFields: true
+          });
+      }
+    } catch (err) {
+      console.error("Import error for book:", book.title, err);
       skipped++;
     }
   }

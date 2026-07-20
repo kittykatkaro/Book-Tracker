@@ -13,6 +13,7 @@ export interface ParsedBook {
   pages?: number;
   genre?: string;
   dateRead?: string; // ISO string
+  isbn?: string;
   source: "goodreads" | "csv" | "pdf" | "docx";
 }
 
