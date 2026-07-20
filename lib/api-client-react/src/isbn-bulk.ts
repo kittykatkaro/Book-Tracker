@@ -25,7 +25,7 @@ export async function bulkLookupIsbn(
   isbns: string[],
   options?: RequestInit,
 ): Promise<IsbnBulkResult> {
-  return customFetch<IsbnBulkResult>("/api/books/isbn-bulk-lookup", {
+  return customFetch<IsbnBulkResult>("/books/isbn-bulk-lookup", {
     ...options,
     method: "POST",
     body: JSON.stringify({ isbns }),

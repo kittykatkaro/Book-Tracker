@@ -142,6 +142,10 @@ export function IsbnSetImport() {
     const validBooks = selectedBooks.filter(b => b.status === "found" || (b.title && b.title.trim() !== ""));
 
     if (!validBooks.length) return;
+    
+    // Debug: Check what data is being sent
+    console.log("Importing books with data:", validBooks.map(b => ({ title: b.title, coverUrl: b.coverUrl })));
+    
     setImporting(true);
     try {
       await Promise.all(

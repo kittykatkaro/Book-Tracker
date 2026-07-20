@@ -4,7 +4,7 @@ import {
   type Response,
   type NextFunction,
 } from "express";
-import { eq, desc, and, or, isNull } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import multer from "multer";
 import { randomUUID } from "crypto";
@@ -292,7 +292,7 @@ router.post("/isbn-bulk-lookup", async (req, res) => {
   return res.json({ results });
 });
 
-// POST /api/books
+// POST /api/books - Merged and cleaned up
 router.post("/", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
@@ -302,16 +302,15 @@ router.post("/", requireAuth, async (req, res) => {
       status: string;
       rating?: number | null;
       pages?: number | null;
-      currentPage?: number | null;
-      notes?: string | null;
       genre?: string | null;
       coverUrl?: string | null;
     };
 
+    // Debug: Check what data is being received
+    console.log("Backend received data:", data);
+
     if (!data.title || !data.author || !data.status) {
-      return res
-        .status(400)
-        .json({ error: "title, author and status are required" });
+      return res.status(400).json({ error: "title, author and status are required" });
     }
 
     const now = new Date();
@@ -327,103 +326,37 @@ router.post("/", requireAuth, async (req, res) => {
         status: data.status,
         rating: data.rating ?? null,
         pages: data.pages ?? null,
-        currentPage: data.currentPage ?? null,
-        notes: data.notes ?? null,
         genre: data.genre ?? null,
         dateAdded: now,
-        dateStarted:
-          data.status === "reading" || data.status === "read" ? now : null,
-        dateFinished: data.status === "read" ? now : null,
+        dateStarted: (data.status === "reading" || data.status === "read") ? now : null,
+        dateFinished: (data.status === "read") ? now : null,
       })
       .returning();
 
     return res.status(201).json(formatBook(book));
   } catch (err) {
+    console.error("Error creating book:", err);
     return res.status(500).json({ error: "Failed to create book" });
   }
 });
 
-// GET /api/books/:id
+// GET /api/books/:id - Type-safe with explicit string casting
 router.get("/:id", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
     const [book] = await db
       .select()
       .from(booksTable)
-      .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
-      );
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
     if (!book) return res.status(404).json({ error: "Not found" });
     return res.json(formatBook(book));
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch book" });
-  }
-});
-
-// PATCH /api/books/:id
-router.patch("/:id", requireAuth, async (req, res) => {
-  try {
-    const { userId } = req as AuthedRequest;
-    const [existing] = await db
-      .select()
-      .from(booksTable)
-      .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
-      );
-    if (!existing) return res.status(404).json({ error: "Not found" });
-
-    const data = req.body as {
-      title?: string;
-      author?: string;
-      status?: string;
-      rating?: number | null;
-      pages?: number | null;
-      currentPage?: number | null;
-      notes?: string | null;
-      genre?: string | null;
-      coverUrl?: string | null;
-      dateStarted?: string | null;
-      dateFinished?: string | null;
-    };
-
-    const updates: Partial<typeof booksTable.$inferInsert> = {};
-    if (data.title !== undefined) updates.title = data.title;
-    if (data.author !== undefined) updates.author = data.author;
-    if (data.status !== undefined) {
-      updates.status = data.status;
-      if (data.status === "reading" && !existing.dateStarted)
-        updates.dateStarted = new Date();
-      if (data.status === "read") {
-        if (!existing.dateStarted) updates.dateStarted = new Date();
-        if (!existing.dateFinished) updates.dateFinished = new Date();
-      }
-    }
-    if ("rating" in data) updates.rating = data.rating ?? null;
-    if ("pages" in data) updates.pages = data.pages ?? null;
-    if ("currentPage" in data) updates.currentPage = data.currentPage ?? null;
-    if ("notes" in data) updates.notes = data.notes ?? null;
-    if ("genre" in data) updates.genre = data.genre ?? null;
-    if ("coverUrl" in data) updates.coverUrl = data.coverUrl ?? null;
-    if ("dateStarted" in data)
-      updates.dateStarted = data.dateStarted
-        ? new Date(data.dateStarted)
-        : null;
-    if ("dateFinished" in data)
-      updates.dateFinished = data.dateFinished
-        ? new Date(data.dateFinished)
-        : null;
-
-    const [book] = await db
-      .update(booksTable)
-      .set(updates)
-      .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
-      )
-      .returning();
-
-    return res.json(formatBook(book));
-  } catch (err) {
-    return res.status(500).json({ error: "Failed to update book" });
   }
 });
 
@@ -440,12 +373,12 @@ router.post("/enrich-all", requireAuth, async (req, res) => {
         author: booksTable.author,
       })
       .from(booksTable)
-      .where(
-        and(
-          eq(booksTable.userId, userId),
-          or(isNull(booksTable.pages), isNull(booksTable.genre)),
-        ),
-      );
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
 
     if (toEnrich.length === 0) {
       return res.json({ enriching: 0 });
@@ -478,9 +411,12 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
     const [existing] = await db
       .select()
       .from(booksTable)
-      .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
-      );
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     const publicUrl = await uploadCoverToGcs(file.buffer, file.mimetype);
@@ -489,7 +425,10 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
       .update(booksTable)
       .set({ coverUrl: publicUrl })
       .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
+        and(
+          eq(booksTable.id, req.params.id as string), 
+          eq(booksTable.userId, userId as string)
+        )
       )
       .returning();
 
@@ -500,6 +439,30 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
   }
 });
 
+// PATCH update a specific book by ID
+router.patch("/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Use booksTable and treat the ID as a string
+    const [updatedBook] = await db
+      .update(booksTable)
+      .set(updateData)
+      .where(eq(booksTable.id, id as string))
+      .returning();
+
+    if (!updatedBook) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    return res.json(formatBook(updatedBook)); 
+  } catch (error) {
+    console.error("Error updating book:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // DELETE /api/books/:id
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
@@ -507,16 +470,22 @@ router.delete("/:id", requireAuth, async (req, res) => {
     const [existing] = await db
       .select()
       .from(booksTable)
-      .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
-      );
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     await db
       .delete(booksTable)
-      .where(
-        and(eq(booksTable.id, req.params.id), eq(booksTable.userId, userId)),
-      );
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to delete book" });
