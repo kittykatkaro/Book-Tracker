@@ -35,6 +35,7 @@ type BookStatus = "want_to_read" | "reading" | "read";
 interface BookEntry extends IsbnBulkEntry {
   selectedStatus: BookStatus;
   selected: boolean;
+  coverUrl?: string | null;
 }
 
 export function IsbnSetImport() {
