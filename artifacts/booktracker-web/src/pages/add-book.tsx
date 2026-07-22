@@ -53,6 +53,7 @@ export function AddBook() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupStatus, setLookupStatus] = useState<"idle" | "success" | "error">("idle");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [lookedUpCoverUrl, setLookedUpCoverUrl] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -76,6 +77,7 @@ export function AddBook() {
       if (result.author) form.setValue("author", result.author, { shouldValidate: true });
       if (result.pages) form.setValue("pages", result.pages as number, { shouldValidate: true });
       if (result.genre) form.setValue("genre", result.genre, { shouldValidate: true });
+      setLookedUpCoverUrl(result.coverUrl ?? null);
       setLookupStatus("success");
     } catch {
       setLookupStatus("error");
@@ -99,6 +101,7 @@ export function AddBook() {
           status: values.status,
           pages: values.pages === "" ? null : (values.pages as number),
           genre: values.genre || null,
+          coverUrl: lookedUpCoverUrl ?? null,
         },
       },
       {

@@ -98,7 +98,8 @@
     "setImportAdd_other": "{{count}} Bücher hinzufügen",
     "setImportReset": "Neu starten",
     "setImportSuccess": "{{count}} Buch zur Bibliothek hinzugefügt!",
-    "setImportSuccess_other": "{{count}} Bücher zur Bibliothek hinzugefügt!"
+    "setImportSuccess_other": "{{count}} Bücher zur Bibliothek hinzugefügt!",
+    "coverPreview": "Cover-Vorschau"
   },
   "stats": {
     "title": "Lesestatistiken",
@@ -246,7 +247,28 @@
     "started": "Begonnen",
     "finished": "Beendet",
     "complete": "abgeschlossen",
-    "pageOf": "/ {{pages}}"
+    "pageOf": "/ {{pages}}",
+    "changeCover": "Cover ändern",
+    "removeCover": "Cover entfernen",
+    "coverTabUrl": "Bild-URL",
+    "coverTabUpload": "Hochladen",
+    "coverUrlPlaceholder": "https://beispiel.de/cover.jpg",
+    "coverSave": "Cover speichern",
+    "coverUploading": "Wird hochgeladen…",
+    "coverUploadBtn": "Bild auswählen",
+    "editDialog": {
+      "title": "Buch bearbeiten",
+      "description": "Aktualisiere die Angaben zu diesem Buch.",
+      "titleLabel": "Titel",
+      "authorLabel": "Autor",
+      "genreLabel": "Genre",
+      "cancel": "Abbrechen",
+      "save": "Änderungen speichern",
+      "saving": "Wird gespeichert…",
+      "successTitle": "Buch aktualisiert!",
+      "errorTitle": "Änderungen konnten nicht gespeichert werden",
+      "errorDesc": "Beim Aktualisieren dieses Buchs ist etwas schiefgelaufen. Bitte versuche es erneut."
+    }
   },
   "importDialog": {
     "titleUpload": "Bibliothek importieren",

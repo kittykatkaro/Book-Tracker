@@ -8,6 +8,7 @@ export const booksTable = pgTable("books", {
   title: text("title").notNull(),
   author: text("author").notNull(),
   coverColor: text("cover_color").notNull(),
+  coverUrl: text("cover_url"),
   status: text("status").notNull(), // 'reading' | 'read' | 'want_to_read'
   rating: integer("rating"),
   pages: integer("pages"),
