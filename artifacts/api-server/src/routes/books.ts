@@ -363,35 +363,35 @@ router.get("/:id", requireAuth, async (req, res) => {
 // POST /api/books/enrich-all  (must be before /:id)
 router.post("/enrich-all", requireAuth, async (req, res) => {
   try {
-    const { userId } = req as AuthedRequest;
+    const userId = req.auth.userId;
 
-    // Find books owned by this user that are missing pages OR genre
-    const toEnrich = await db
-      .select({
-        id: booksTable.id,
-        title: booksTable.title,
-        author: booksTable.author,
-      })
+    // Fetch all books for the authenticated user that require enrichment
+    const booksToEnrich = await db
+      .select()
       .from(booksTable)
-    .where(
-      and(
-        eq(booksTable.id, req.params.id as string), 
-        eq(booksTable.userId, userId as string)
-      )
-    );
+      .where(
+        and(
+          eq(booksTable.userId, userId)
+          // Add any specific condition that flags books needing enrichment if applicable,
+          // for example: isNull(booksTable.enrichedAt) or or(isNull(booksTable.coverUrl), ...)
+        )
+      );
 
-    if (toEnrich.length === 0) {
+    if (booksToEnrich.length === 0) {
       return res.json({ enriching: 0 });
     }
 
-    // Fire-and-forget — do NOT await
-    enrichBooksInBackground(toEnrich).catch(() => {
-      /* swallow */
-    });
+    // Trigger async enrichment for each identified book
+    for (const book of booksToEnrich) {
+      enrichBookAsync(book.id, userId).catch((err) => {
+        logger.error({ err, bookId: book.id }, "Failed to enrich book in background");
+      });
+    }
 
-    return res.json({ enriching: toEnrich.length });
-  } catch (err) {
-    return res.status(500).json({ error: "Failed to start enrichment" });
+    return res.json({ enriching: booksToEnrich.length });
+  } catch (error) {
+    logger.error({ error }, "Error in enrich-all route");
+    return res.status(500).json({ error: "Failed to trigger bulk enrichment" });
   }
 });
 
@@ -442,37 +442,98 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
 // PATCH update a specific book by ID
 router.patch("/:id", requireAuth, async (req, res) => {
   try {
+    const userId = req.auth.userId;
     const { id } = req.params;
-    const updateData = req.body;
-    const { userId } = req as AuthedRequest; // Get the currently logged-in user
 
-    // 1. Log the incoming request to see what the server is receiving
-    console.log(`[PATCH] Attempting to update book ID: ${id}`);
-    console.log(`[PATCH] Data received from frontend:`, updateData);
+    // 1. Fetch the existing book record to check ownership and state transitions
+    const existingBook = await db
+      .select()
+      .from(booksTable)
+      .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
+      .then((rows) => rows[0]);
 
-    // 2. Update the book, ensuring both the ID and the User ID match
-    const [updatedBook] = await db
-      .update(booksTable)
-      .set(updateData)
-      .where(
-        and(
-          eq(booksTable.id, id as string),
-          eq(booksTable.userId, userId as string) // Security: Must own the book
-        )
-      )
-      .returning();
-
-    // 3. Log the result
-    if (!updatedBook) {
-      console.log(`[PATCH] Failed: Book not found, or user doesn't own it.`);
+    if (!existingBook) {
       return res.status(404).json({ error: "Book not found" });
     }
 
-    console.log(`[PATCH] Success! Book updated.`);
-    return res.json(formatBook(updatedBook)); 
+    // 2. Destructure ONLY whitelisted fields from req.body to prevent mass assignment
+    const {
+      title,
+      author,
+      genre,
+      status,
+      rating,
+      pages,
+      notes,
+      coverUrl,
+      isbn,
+      publishedYear,
+      description,
+      dateStarted: rawDateStarted,
+      dateFinished: rawDateFinished,
+    } = req.body;
+
+    // Build our clean update payload
+    const updatePayload: Record<string, any> = {};
+
+    if (title !== undefined) updatePayload.title = title;
+    if (author !== undefined) updatePayload.author = author;
+    if (genre !== undefined) updatePayload.genre = genre;
+    if (rating !== undefined) updatePayload.rating = rating;
+    if (pages !== undefined) updatePayload.pages = pages;
+    if (notes !== undefined) updatePayload.notes = notes;
+    if (coverUrl !== undefined) updatePayload.coverUrl = coverUrl;
+    if (isbn !== undefined) updatePayload.isbn = isbn;
+    if (publishedYear !== undefined) updatePayload.publishedYear = publishedYear;
+    if (description !== undefined) updatePayload.description = description;
+
+    // 3. Handle Status Changes and Automatic Date Tracking
+    if (status !== undefined) {
+      updatePayload.status = status;
+
+      // Auto-set dateStarted if transitioning to 'reading' and not explicitly provided
+      if (
+        status === "reading" &&
+        existingBook.status !== "reading" &&
+        rawDateStarted === undefined
+      ) {
+        updatePayload.dateStarted = new Date();
+      }
+
+      // Auto-set dateFinished if transitioning to 'read' and not explicitly provided
+      if (
+        status === "read" &&
+        existingBook.status !== "read" &&
+        rawDateFinished === undefined
+      ) {
+        updatePayload.dateFinished = new Date();
+      }
+    }
+
+    // 4. Handle explicitly provided dates (convert string ISO dates to Date objects/null)
+    if (rawDateStarted !== undefined) {
+      updatePayload.dateStarted = rawDateStarted ? new Date(rawDateStarted) : null;
+    }
+    if (rawDateFinished !== undefined) {
+      updatePayload.dateFinished = rawDateFinished ? new Date(rawDateFinished) : null;
+    }
+
+    // If no valid update fields were provided, return early
+    if (Object.keys(updatePayload).length === 0) {
+      return res.json(existingBook);
+    }
+
+    // 5. Perform the secure update
+    const updatedBooks = await db
+      .update(booksTable)
+      .set(updatePayload)
+      .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
+      .returning();
+
+    return res.json(updatedBooks[0]);
   } catch (error) {
-    console.error("[PATCH] Error updating book:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    logger.error({ error, bookId: req.params.id }, "Error updating book");
+    return res.status(500).json({ error: "Failed to update book" });
   }
 });
 
