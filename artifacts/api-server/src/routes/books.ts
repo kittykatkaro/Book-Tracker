@@ -4,7 +4,7 @@ import {
   type Response,
   type NextFunction,
 } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, isNull } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import multer from "multer";
 import { randomUUID } from "crypto";
@@ -363,34 +363,35 @@ router.get("/:id", requireAuth, async (req, res) => {
 // POST /api/books/enrich-all  (must be before /:id)
 router.post("/enrich-all", requireAuth, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const { userId } = req as AuthedRequest;
 
-    // Fetch all books for the authenticated user that require enrichment
+    // Fetch books for the authenticated user that are missing pages or genre
     const booksToEnrich = await db
-      .select()
+      .select({
+        id: booksTable.id,
+        title: booksTable.title,
+        author: booksTable.author,
+      })
       .from(booksTable)
       .where(
         and(
-          eq(booksTable.userId, userId)
-          // Add any specific condition that flags books needing enrichment if applicable,
-          // for example: isNull(booksTable.enrichedAt) or or(isNull(booksTable.coverUrl), ...)
-        )
+          eq(booksTable.userId, userId),
+          or(isNull(booksTable.pages), isNull(booksTable.genre)),
+        ),
       );
 
     if (booksToEnrich.length === 0) {
       return res.json({ enriching: 0 });
     }
 
-    // Trigger async enrichment for each identified book
-    for (const book of booksToEnrich) {
-      enrichBookAsync(book.id, userId).catch((err) => {
-        logger.error({ err, bookId: book.id }, "Failed to enrich book in background");
-      });
-    }
+    // Fire-and-forget — do NOT await
+    enrichBooksInBackground(booksToEnrich).catch((err) => {
+      console.error("[enrich-all] Background enrichment failed:", err);
+    });
 
     return res.json({ enriching: booksToEnrich.length });
   } catch (error) {
-    logger.error({ error }, "Error in enrich-all route");
+    console.error("[enrich-all] Error in enrich-all route:", error);
     return res.status(500).json({ error: "Failed to trigger bulk enrichment" });
   }
 });
@@ -442,8 +443,8 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
 // PATCH update a specific book by ID
 router.patch("/:id", requireAuth, async (req, res) => {
   try {
-    const userId = req.auth.userId;
-    const { id } = req.params;
+    const { userId } = req as AuthedRequest;
+    const id = req.params.id as string;
 
     // 1. Fetch the existing book record to check ownership and state transitions
     const existingBook = await db
@@ -520,7 +521,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
     // If no valid update fields were provided, return early
     if (Object.keys(updatePayload).length === 0) {
-      return res.json(existingBook);
+      return res.json(formatBook(existingBook));
     }
 
     // 5. Perform the secure update
@@ -530,9 +531,9 @@ router.patch("/:id", requireAuth, async (req, res) => {
       .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
       .returning();
 
-    return res.json(updatedBooks[0]);
+    return res.json(formatBook(updatedBooks[0]));
   } catch (error) {
-    logger.error({ error, bookId: req.params.id }, "Error updating book");
+    console.error(`[PATCH /api/books/${req.params.id}] Error updating book:`, error);
     return res.status(500).json({ error: "Failed to update book" });
   }
 });
