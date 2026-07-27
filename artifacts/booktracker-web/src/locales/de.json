@@ -307,7 +307,6 @@
     "importCount": "{{count}} Buch importieren",
     "importCount_other": "{{count}} Bücher importieren",
     "addingCount": "{{count}} Bücher werden zur Bibliothek hinzugefügt…",
-    "starting": "Import wird gestartet…",
     "statusRead": "Gelesen",
     "statusReading": "Lese ich",
     "statusWantToRead": "Möchte lesen",
