@@ -42,10 +42,15 @@ export async function lookupByTitleAuthor(
  * For each book id provided, query OpenLibrary and patch the DB row
  * for any fields (pages, genre) that are still null.
  * Runs entirely in the background — errors are swallowed per book.
+ *
+ * `onProgress` (optional) is called after each book is processed —
+ * used by the import job tracker to report "enriching X/Y" status.
  */
 export async function enrichBooksInBackground(
   books: { id: string; title: string; author: string }[],
+  onProgress?: (done: number, total: number) => void,
 ): Promise<void> {
+  let done = 0;
   for (const book of books) {
     try {
       const result = await lookupByTitleAuthor(book.title, book.author);
@@ -67,6 +72,9 @@ export async function enrichBooksInBackground(
       await db.update(booksTable).set(patch).where(eq(booksTable.id, book.id));
     } catch {
       // swallow — enrichment is best-effort
+    } finally {
+      done++;
+      onProgress?.(done, books.length);
     }
   }
 }

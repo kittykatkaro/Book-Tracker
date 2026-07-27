@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListBooksQueryKey } from "@workspace/api-client-react";
 import {
@@ -69,10 +69,29 @@ export function ImportBooksDialog({
   const [books, setBooks] = useState<SelectableBook[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [progress, setProgress] = useState<{
+    status: string;
+    message: string;
+    imported: number;
+    skipped: number;
+    total: number;
+    enriching: { total: number; done: number };
+  } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  useEffect(() => stopPolling, []);
 
   const reset = () => {
+    stopPolling();
     setStep("upload"); setBooks([]); setParseError(null);
-    setParsing(false); setDragging(false);
+    setParsing(false); setDragging(false); setProgress(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -122,6 +141,15 @@ export function ImportBooksDialog({
     const selected = books.filter((b) => b.selected);
     if (!selected.length) return;
     setStep("importing");
+    setProgress({
+      status: "queued",
+      message: t("importDialog.starting"),
+      imported: 0,
+      skipped: 0,
+      total: selected.length,
+      enriching: { total: 0, done: 0 },
+    });
+
     try {
       const res = await fetch("/api/books/import/confirm", {
         method: "POST",
@@ -130,15 +158,54 @@ export function ImportBooksDialog({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? t("importDialog.errorImportFailed"));
-      await qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
-      toast({
-        title: t("importDialog.importedCount", { count: data.imported }),
-        description: data.skipped
-          ? t("importDialog.skippedDesc", { count: data.skipped })
-          : t("importDialog.allAdded"),
-      });
-      onImported?.({ imported: data.imported, skipped: data.skipped, enriching: data.enriching ?? 0 });
-      handleClose();
+
+      const { jobId } = data as { jobId: string };
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/books/import/status/${jobId}`);
+          const statusData = await statusRes.json();
+          if (!statusRes.ok) throw new Error(statusData.error ?? t("importDialog.errorImportFailed"));
+
+          setProgress({
+            status: statusData.status,
+            message: statusData.message,
+            imported: statusData.imported,
+            skipped: statusData.skipped,
+            total: statusData.total,
+            enriching: statusData.enriching,
+          });
+
+          if (statusData.status === "completed") {
+            stopPolling();
+            await qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
+            toast({
+              title: t("importDialog.importedCount", { count: statusData.imported }),
+              description: statusData.skipped
+                ? t("importDialog.skippedDesc", { count: statusData.skipped })
+                : t("importDialog.allAdded"),
+            });
+            onImported?.({
+              imported: statusData.imported,
+              skipped: statusData.skipped,
+              enriching: statusData.enriching?.total ?? 0,
+            });
+            handleClose();
+          } else if (statusData.status === "failed") {
+            stopPolling();
+            toast({
+              title: t("importDialog.errorImportFailed"),
+              description: statusData.error,
+              variant: "destructive",
+            });
+            setStep("preview");
+          }
+        } catch (pollErr: any) {
+          stopPolling();
+          toast({ title: t("importDialog.errorImportFailed"), description: pollErr?.message, variant: "destructive" });
+          setStep("preview");
+        }
+      }, 800);
     } catch (err: any) {
       toast({ title: t("importDialog.errorImportFailed"), description: err?.message, variant: "destructive" });
       setStep("preview");
@@ -294,9 +361,34 @@ export function ImportBooksDialog({
         )}
 
         {step === "importing" && (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
+          <div className="flex flex-col items-center justify-center py-16 gap-4 px-4">
             <Loader2 className="h-10 w-10 text-primary animate-spin" />
-            <p className="text-muted-foreground">{t("importDialog.addingCount", { count: selectedCount })}</p>
+            <p className="text-muted-foreground text-center">
+              {progress?.message ?? t("importDialog.addingCount", { count: selectedCount })}
+            </p>
+            {progress && progress.total > 0 && (
+              <div className="w-full max-w-xs">
+                <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          ((progress.status === "enriching"
+                            ? progress.total + (progress.enriching.done ?? 0)
+                            : progress.imported + progress.skipped) /
+                            (progress.status === "enriching"
+                              ? progress.total + (progress.enriching.total || 1)
+                              : progress.total)) *
+                            100,
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>

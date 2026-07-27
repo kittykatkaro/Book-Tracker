@@ -307,6 +307,7 @@
     "importCount": "Import {{count}} book",
     "importCount_other": "Import {{count}} books",
     "addingCount": "Adding {{count}} books to your library…",
+    "starting": "Starting import…",
     "statusRead": "Read",
     "statusReading": "Reading",
     "statusWantToRead": "Want to Read",
