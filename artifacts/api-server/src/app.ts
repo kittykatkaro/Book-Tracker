@@ -13,6 +13,12 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Required for accurate req.ip behind Replit's reverse proxy — without
+// this, every request looks like it comes from the proxy, which breaks
+// IP-based rate limiting (and express-rate-limit will refuse to start
+// once it detects X-Forwarded-For without a trust proxy setting).
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
