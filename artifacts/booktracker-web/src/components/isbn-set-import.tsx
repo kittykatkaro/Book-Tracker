@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { IsbnScannerDialog } from "@/components/isbn-scanner";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 type BookStatus = "want_to_read" | "reading" | "read";
 
@@ -43,6 +44,7 @@ export function IsbnSetImport() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const createBook = useCreateBook();
+  const { toast } = useToast();
 
   const [isbnText, setIsbnText] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -142,13 +144,10 @@ export function IsbnSetImport() {
     const validBooks = selectedBooks.filter(b => b.status === "found" || (b.title && b.title.trim() !== ""));
 
     if (!validBooks.length) return;
-    
-    // Debug: Check what data is being sent
-    console.log("Importing books with data:", validBooks.map(b => ({ title: b.title, coverUrl: b.coverUrl })));
-    
+
     setImporting(true);
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         validBooks.map((b) =>
           createBook.mutateAsync({
             data: {
@@ -158,12 +157,61 @@ export function IsbnSetImport() {
               pages: b.pages ?? null,
               genre: b.genre ?? null,
               coverUrl: b.coverUrl ?? null,
+              isbn: b.isbn ?? null,
             },
           }),
         ),
       );
-      await queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() });
-      setImportDone(true);
+
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      // A 409 means "already in your library" — that's an expected skip,
+      // not a real failure, so it shouldn't be counted or reported as one.
+      const duplicates = results.filter(
+        (r) => r.status === "rejected" && (r.reason as any)?.status === 409,
+      ).length;
+      const failed = results.length - succeeded - duplicates;
+
+      // Refresh the library if anything actually made it in, even if some
+      // books in the batch failed — no reason to hide the ones that worked.
+      if (succeeded > 0) {
+        await queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() });
+      }
+
+      if (failed === 0) {
+        if (duplicates > 0) {
+          toast({
+            title: t("addBook.setImportDuplicatesTitle", { count: duplicates }),
+            description: t("addBook.setImportDuplicatesDesc"),
+          });
+        }
+        setImportDone(true);
+      } else if (succeeded > 0 || duplicates > 0) {
+        toast({
+          title: t("addBook.setImportPartialTitle", { succeeded, failed }),
+          description: t("addBook.setImportPartialDesc"),
+          variant: "destructive",
+        });
+        setImportDone(true);
+      } else {
+        // Nothing made it in — surface the actual failure reason (e.g. an
+        // expired session) instead of leaving the user with no feedback.
+        const firstError = results.find(
+          (r): r is PromiseRejectedResult => r.status === "rejected",
+        )?.reason;
+        toast({
+          title: t("addBook.setImportFailedTitle"),
+          description: firstError?.message ?? t("addBook.setImportFailedDesc"),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      // Belt-and-suspenders — allSettled shouldn't itself throw, but never
+      // let an import error crash the page instead of showing feedback.
+      toast({
+        title: t("addBook.setImportFailedTitle"),
+        description: err?.message ?? t("addBook.setImportFailedDesc"),
+        variant: "destructive",
+      });
     } finally {
       setImporting(false);
     }

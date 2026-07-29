@@ -184,6 +184,7 @@ components:
         title: { type: string }
         author: { type: string }
         coverColor: { type: string }
+        isbn: { type: ["string", "null"] }
         status:
           type: string
           enum: [reading, read, want_to_read]
@@ -201,6 +202,7 @@ components:
       properties:
         title: { type: string, minLength: 1 }
         author: { type: string, minLength: 1 }
+        isbn: { type: ["string", "null"] }
         status:
           type: string
           enum: [reading, read, want_to_read]
@@ -214,6 +216,7 @@ components:
       properties:
         title: { type: string }
         author: { type: string }
+        isbn: { type: ["string", "null"] }
         status:
           type: string
           enum: [reading, read, want_to_read]

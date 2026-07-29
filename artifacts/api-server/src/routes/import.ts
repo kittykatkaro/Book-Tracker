@@ -141,14 +141,19 @@
         return res.status(400).json({ error: "books array is required" });
       }
 
-      // Fetch existing titles for duplicate detection
+      // Fetch existing books for duplicate detection — prefer ISBN match
+      // when available (more reliable than title/author spelling), fall
+      // back to title+author for books without an ISBN on either side.
       const existing = await db
-        .select({ title: booksTable.title, author: booksTable.author })
+        .select({ title: booksTable.title, author: booksTable.author, isbn: booksTable.isbn })
         .from(booksTable)
         .where(eq(booksTable.userId, userId));
 
       const existingKeys = new Set(
         existing.map((b) => `${b.title.toLowerCase()}|${b.author.toLowerCase()}`)
+      );
+      const existingIsbns = new Set(
+        existing.map((b) => b.isbn).filter((isbn): isbn is string => Boolean(isbn)),
       );
 
       let imported = 0;
@@ -168,8 +173,11 @@
           continue;
         }
 
+        const cleanIsbn = book.isbn ? book.isbn.replace(/[^0-9Xx]/g, "") : null;
         const key = `${book.title.trim().toLowerCase()}|${book.author.trim().toLowerCase()}`;
-        if (existingKeys.has(key)) {
+
+        const isDuplicate = (cleanIsbn && existingIsbns.has(cleanIsbn)) || existingKeys.has(key);
+        if (isDuplicate) {
           skipped++;
           continue;
         }
@@ -185,6 +193,7 @@
             title: book.title.trim(),
             author: book.author.trim(),
             coverColor: randomColor(),
+            isbn: cleanIsbn,
             status: book.status ?? "want_to_read",
             rating: book.rating ?? null,
             pages: book.pages ?? null,
@@ -195,6 +204,7 @@
           });
 
           existingKeys.add(key);
+          if (cleanIsbn) existingIsbns.add(cleanIsbn);
           imported++;
 
           // Check if book lacks metadata and has sufficient info (Title or ISBN) to search

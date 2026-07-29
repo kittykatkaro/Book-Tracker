@@ -304,13 +304,28 @@ router.post("/", requireAuth, async (req, res) => {
       pages?: number | null;
       genre?: string | null;
       coverUrl?: string | null;
+      isbn?: string | null;
     };
-
-    // Debug: Check what data is being received
-    console.log("Backend received data:", data);
 
     if (!data.title || !data.author || !data.status) {
       return res.status(400).json({ error: "title, author and status are required" });
+    }
+
+    const cleanIsbn = data.isbn ? data.isbn.replace(/[^0-9Xx]/g, "") : null;
+
+    if (cleanIsbn) {
+      const [existing] = await db
+        .select({ id: booksTable.id, title: booksTable.title })
+        .from(booksTable)
+        .where(and(eq(booksTable.userId, userId), eq(booksTable.isbn, cleanIsbn)));
+
+      if (existing) {
+        return res.status(409).json({
+          error: "duplicate_isbn",
+          message: `"${existing.title}" is already in your library.`,
+          bookId: existing.id,
+        });
+      }
     }
 
     const now = new Date();
@@ -323,6 +338,7 @@ router.post("/", requireAuth, async (req, res) => {
         author: data.author,
         coverColor: randomColor(),
         coverUrl: data.coverUrl ?? null,
+        isbn: cleanIsbn,
         status: data.status,
         rating: data.rating ?? null,
         pages: data.pages ?? null,
