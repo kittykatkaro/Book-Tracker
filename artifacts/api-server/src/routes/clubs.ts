@@ -3,11 +3,12 @@ import { eq, desc, and, count } from "drizzle-orm";
 import { createHash } from "crypto";
 import { getAuth } from "@clerk/express";
 import {
-  db,
   bookClubsTable,
   bookClubMembersTable,
   bookClubBooksTable,
   bookClubPostsTable,
+  withUserContext,
+  type DbClient,
 } from "@workspace/db";
 
 const router = Router();
@@ -66,8 +67,8 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-async function getMembership(clubId: string, userId: string) {
-  const [member] = await db
+async function getMembership(client: DbClient, clubId: string, userId: string) {
+  const [member] = await client
     .select()
     .from(bookClubMembersTable)
     .where(and(eq(bookClubMembersTable.clubId, clubId), eq(bookClubMembersTable.userId, userId)));
@@ -83,47 +84,49 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
 
-    const memberships = await db
-      .select()
-      .from(bookClubMembersTable)
-      .where(eq(bookClubMembersTable.userId, userId));
+    const clubs = await withUserContext(userId, async (tx) => {
+      const memberships = await tx
+        .select()
+        .from(bookClubMembersTable)
+        .where(eq(bookClubMembersTable.userId, userId));
 
-    if (memberships.length === 0) return res.json([]);
+      if (memberships.length === 0) return [];
 
-    const clubs = await Promise.all(
-      memberships.map(async (m) => {
-        const [club] = await db
-          .select()
-          .from(bookClubsTable)
-          .where(eq(bookClubsTable.id, m.clubId));
-        if (!club) return null;
+      return Promise.all(
+        memberships.map(async (m) => {
+          const [club] = await tx
+            .select()
+            .from(bookClubsTable)
+            .where(eq(bookClubsTable.id, m.clubId));
+          if (!club) return null;
 
-        const [{ count: memberCount }] = await db
-          .select({ count: count() })
-          .from(bookClubMembersTable)
-          .where(eq(bookClubMembersTable.clubId, m.clubId));
+          const [{ count: memberCount }] = await tx
+            .select({ count: count() })
+            .from(bookClubMembersTable)
+            .where(eq(bookClubMembersTable.clubId, m.clubId));
 
-        const [{ count: bookCount }] = await db
-          .select({ count: count() })
-          .from(bookClubBooksTable)
-          .where(eq(bookClubBooksTable.clubId, m.clubId));
+          const [{ count: bookCount }] = await tx
+            .select({ count: count() })
+            .from(bookClubBooksTable)
+            .where(eq(bookClubBooksTable.clubId, m.clubId));
 
-        const [latestBook] = await db
-          .select()
-          .from(bookClubBooksTable)
-          .where(eq(bookClubBooksTable.clubId, m.clubId))
-          .orderBy(desc(bookClubBooksTable.createdAt))
-          .limit(1);
+          const [latestBook] = await tx
+            .select()
+            .from(bookClubBooksTable)
+            .where(eq(bookClubBooksTable.clubId, m.clubId))
+            .orderBy(desc(bookClubBooksTable.createdAt))
+            .limit(1);
 
-        return {
-          ...formatClub(club),
-          memberCount: Number(memberCount),
-          bookCount: Number(bookCount),
-          latestBook: latestBook ?? null,
-          myRole: m.role,
-        };
-      }),
-    );
+          return {
+            ...formatClub(club),
+            memberCount: Number(memberCount),
+            bookCount: Number(bookCount),
+            latestBook: latestBook ?? null,
+            myRole: m.role,
+          };
+        }),
+      );
+    });
 
     return res.json(clubs.filter(Boolean));
   } catch (err) {
@@ -150,27 +153,31 @@ router.post("/", requireAuth, async (req, res) => {
     const now = new Date();
     const passwordHash = hashPassword(password);
 
-    const [club] = await db
-      .insert(bookClubsTable)
-      .values({
-        id: clubId,
-        name: name.trim(),
-        description: description?.trim() ?? null,
-        ownerId: userId,
-        inviteCode: generateInviteCode(),
-        password: passwordHash,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+    const club = await withUserContext(userId, async (tx) => {
+      const [club] = await tx
+        .insert(bookClubsTable)
+        .values({
+          id: clubId,
+          name: name.trim(),
+          description: description?.trim() ?? null,
+          ownerId: userId,
+          inviteCode: generateInviteCode(),
+          password: passwordHash,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
 
-    await db.insert(bookClubMembersTable).values({
-      id: generateId(),
-      clubId,
-      userId,
-      displayName: displayName?.trim() ?? null,
-      role: "owner",
-      joinedAt: now,
+      await tx.insert(bookClubMembersTable).values({
+        id: generateId(),
+        clubId,
+        userId,
+        displayName: displayName?.trim() ?? null,
+        role: "owner",
+        joinedAt: now,
+      });
+
+      return club;
     });
 
     return res.status(201).json({
@@ -198,36 +205,45 @@ router.post("/join", requireAuth, async (req, res) => {
 
     if (!inviteCode?.trim()) return res.status(400).json({ error: "inviteCode is required" });
 
-    const [club] = await db
-      .select()
-      .from(bookClubsTable)
-      .where(eq(bookClubsTable.inviteCode, inviteCode.trim().toUpperCase()));
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx
+        .select()
+        .from(bookClubsTable)
+        .where(eq(bookClubsTable.inviteCode, inviteCode.trim().toUpperCase()));
 
-    if (!club) return res.status(404).json({ error: "Invalid invite code" });
+      if (!club) return { status: 404, error: "Invalid invite code" } as const;
 
-    // Password check — only if the club has one
-    if (club.password) {
-      if (!password?.trim()) {
-        return res.status(403).json({ error: "This club requires a password", code: "password_required" });
+      // Password check — only if the club has one
+      if (club.password) {
+        if (!password?.trim()) {
+          return { status: 403, error: "This club requires a password", code: "password_required" } as const;
+        }
+        if (hashPassword(password) !== club.password) {
+          return { status: 403, error: "Incorrect password", code: "wrong_password" } as const;
+        }
       }
-      if (hashPassword(password) !== club.password) {
-        return res.status(403).json({ error: "Incorrect password", code: "wrong_password" });
-      }
-    }
 
-    const existing = await getMembership(club.id, userId);
-    if (existing) return res.status(409).json({ error: "Already a member" });
+      const existing = await getMembership(tx, club.id, userId);
+      if (existing) return { status: 409, error: "Already a member" } as const;
 
-    await db.insert(bookClubMembersTable).values({
-      id: generateId(),
-      clubId: club.id,
-      userId,
-      displayName: displayName?.trim() ?? null,
-      role: "member",
-      joinedAt: new Date(),
+      await tx.insert(bookClubMembersTable).values({
+        id: generateId(),
+        clubId: club.id,
+        userId,
+        displayName: displayName?.trim() ?? null,
+        role: "member",
+        joinedAt: new Date(),
+      });
+
+      return { status: 200, club } as const;
     });
 
-    return res.status(200).json({ club: formatClub(club) });
+    if (result.status !== 200) {
+      const { status, club: _club, ...body } = result as any;
+      return res.status(status).json(body);
+    }
+
+    return res.status(200).json({ club: formatClub(result.club) });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Failed to join club" });
@@ -240,40 +256,52 @@ router.get("/:id", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const { id } = req.params;
 
-    const membership = await getMembership(id, userId);
-    if (!membership) return res.status(403).json({ error: "Not a member" });
+    const result = await withUserContext(userId, async (tx) => {
+      const membership = await getMembership(tx, id, userId);
+      if (!membership) return { status: 403, error: "Not a member" } as const;
 
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
 
-    const members = await db
-      .select()
-      .from(bookClubMembersTable)
-      .where(eq(bookClubMembersTable.clubId, id))
-      .orderBy(bookClubMembersTable.joinedAt);
+      const members = await tx
+        .select()
+        .from(bookClubMembersTable)
+        .where(eq(bookClubMembersTable.clubId, id))
+        .orderBy(bookClubMembersTable.joinedAt);
 
-    const books = await db
-      .select()
-      .from(bookClubBooksTable)
-      .where(eq(bookClubBooksTable.clubId, id))
-      .orderBy(desc(bookClubBooksTable.createdAt));
+      const books = await tx
+        .select()
+        .from(bookClubBooksTable)
+        .where(eq(bookClubBooksTable.clubId, id))
+        .orderBy(desc(bookClubBooksTable.createdAt));
 
-    const booksWithCounts = await Promise.all(
-      books.map(async (book) => {
-        const [{ count: postCount }] = await db
-          .select({ count: count() })
-          .from(bookClubPostsTable)
-          .where(eq(bookClubPostsTable.clubBookId, book.id));
-        return { ...book, postCount: Number(postCount) };
-      }),
-    );
+      const booksWithCounts = await Promise.all(
+        books.map(async (book) => {
+          const [{ count: postCount }] = await tx
+            .select({ count: count() })
+            .from(bookClubPostsTable)
+            .where(eq(bookClubPostsTable.clubBookId, book.id));
+          return { ...book, postCount: Number(postCount) };
+        }),
+      );
 
-    return res.json({
-      ...formatClub(club),
-      members,
-      books: booksWithCounts,
-      myRole: membership.role,
+      return {
+        status: 200,
+        payload: {
+          ...formatClub(club),
+          members,
+          books: booksWithCounts,
+          myRole: membership.role,
+        },
+      } as const;
     });
+
+    if (result.status !== 200) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
+
+    return res.json(result.payload);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Failed to fetch club" });
@@ -285,30 +313,40 @@ router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
     const { id } = req.params;
-
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
-    if (club.ownerId !== userId) return res.status(403).json({ error: "Owner only" });
-
     const { name, description, password } = req.body as {
       name?: string;
       description?: string;
       /** Empty string removes the password; undefined leaves it unchanged */
       password?: string;
     };
-    const updates: Partial<typeof bookClubsTable.$inferInsert> = { updatedAt: new Date() };
-    if (name !== undefined) updates.name = name.trim();
-    if (description !== undefined) updates.description = description.trim() || null;
-    if (password !== undefined) {
-      updates.password = password.trim() ? hashPassword(password) : null;
+
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
+      if (club.ownerId !== userId) return { status: 403, error: "Owner only" } as const;
+
+      const updates: Partial<typeof bookClubsTable.$inferInsert> = { updatedAt: new Date() };
+      if (name !== undefined) updates.name = name.trim();
+      if (description !== undefined) updates.description = description.trim() || null;
+      if (password !== undefined) {
+        updates.password = password.trim() ? hashPassword(password) : null;
+      }
+
+      const [updated] = await tx
+        .update(bookClubsTable)
+        .set(updates)
+        .where(eq(bookClubsTable.id, id))
+        .returning();
+
+      return { status: 200, club: updated } as const;
+    });
+
+    if (result.status !== 200) {
+      const { status, club: _club, ...body } = result as any;
+      return res.status(status).json(body);
     }
 
-    const [updated] = await db
-      .update(bookClubsTable)
-      .set(updates)
-      .where(eq(bookClubsTable.id, id))
-      .returning();
-    return res.json(formatClub(updated));
+    return res.json(formatClub(result.club));
   } catch (err) {
     return res.status(500).json({ error: "Failed to update club" });
   }
@@ -320,11 +358,19 @@ router.delete("/:id", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const { id } = req.params;
 
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
-    if (club.ownerId !== userId) return res.status(403).json({ error: "Owner only" });
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
+      if (club.ownerId !== userId) return { status: 403, error: "Owner only" } as const;
 
-    await db.delete(bookClubsTable).where(eq(bookClubsTable.id, id));
+      await tx.delete(bookClubsTable).where(eq(bookClubsTable.id, id));
+      return { status: 204 } as const;
+    });
+
+    if (result.status !== 204) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to delete club" });
@@ -337,17 +383,25 @@ router.post("/:id/leave", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const { id } = req.params;
 
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
-    if (club.ownerId === userId)
-      return res.status(400).json({ error: "Owner cannot leave — delete the club instead" });
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
+      if (club.ownerId === userId)
+        return { status: 400, error: "Owner cannot leave — delete the club instead" } as const;
 
-    const membership = await getMembership(id, userId);
-    if (!membership) return res.status(404).json({ error: "Not a member" });
+      const membership = await getMembership(tx, id, userId);
+      if (!membership) return { status: 404, error: "Not a member" } as const;
 
-    await db
-      .delete(bookClubMembersTable)
-      .where(and(eq(bookClubMembersTable.clubId, id), eq(bookClubMembersTable.userId, userId)));
+      await tx
+        .delete(bookClubMembersTable)
+        .where(and(eq(bookClubMembersTable.clubId, id), eq(bookClubMembersTable.userId, userId)));
+      return { status: 204 } as const;
+    });
+
+    if (result.status !== 204) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to leave club" });
@@ -364,16 +418,24 @@ router.delete("/:id/members/:memberId", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const { id, memberId } = req.params;
 
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
-    if (club.ownerId !== userId) return res.status(403).json({ error: "Owner only" });
-    if (memberId === userId) return res.status(400).json({ error: "Cannot remove yourself" });
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
+      if (club.ownerId !== userId) return { status: 403, error: "Owner only" } as const;
+      if (memberId === userId) return { status: 400, error: "Cannot remove yourself" } as const;
 
-    await db
-      .delete(bookClubMembersTable)
-      .where(
-        and(eq(bookClubMembersTable.clubId, id), eq(bookClubMembersTable.userId, memberId)),
-      );
+      await tx
+        .delete(bookClubMembersTable)
+        .where(
+          and(eq(bookClubMembersTable.clubId, id), eq(bookClubMembersTable.userId, memberId)),
+        );
+      return { status: 204 } as const;
+    });
+
+    if (result.status !== 204) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to remove member" });
@@ -389,10 +451,6 @@ router.post("/:id/books", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
     const { id } = req.params;
-
-    const membership = await getMembership(id, userId);
-    if (!membership) return res.status(403).json({ error: "Not a member" });
-
     const { title, author, isbn, pages, genre } = req.body as {
       title: string;
       author: string;
@@ -404,24 +462,36 @@ router.post("/:id/books", requireAuth, async (req, res) => {
     if (!title?.trim() || !author?.trim())
       return res.status(400).json({ error: "title and author are required" });
 
-    const [book] = await db
-      .insert(bookClubBooksTable)
-      .values({
-        id: generateId(),
-        clubId: id,
-        title: title.trim(),
-        author: author.trim(),
-        coverColor: randomColor(),
-        isbn: isbn ?? null,
-        pages: pages ?? null,
-        genre: genre ?? null,
-        addedBy: userId,
-        isActive: true,
-        createdAt: new Date(),
-      })
-      .returning();
+    const result = await withUserContext(userId, async (tx) => {
+      const membership = await getMembership(tx, id, userId);
+      if (!membership) return { status: 403, error: "Not a member" } as const;
 
-    return res.status(201).json({ ...book, postCount: 0 });
+      const [book] = await tx
+        .insert(bookClubBooksTable)
+        .values({
+          id: generateId(),
+          clubId: id,
+          title: title.trim(),
+          author: author.trim(),
+          coverColor: randomColor(),
+          isbn: isbn ?? null,
+          pages: pages ?? null,
+          genre: genre ?? null,
+          addedBy: userId,
+          isActive: true,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      return { status: 201, book } as const;
+    });
+
+    if (result.status !== 201) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
+
+    return res.status(201).json({ ...result.book, postCount: 0 });
   } catch (err) {
     return res.status(500).json({ error: "Failed to add book" });
   }
@@ -433,19 +503,27 @@ router.delete("/:id/books/:bookId", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const { id, bookId } = req.params;
 
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
 
-    const [book] = await db
-      .select()
-      .from(bookClubBooksTable)
-      .where(and(eq(bookClubBooksTable.id, bookId), eq(bookClubBooksTable.clubId, id)));
-    if (!book) return res.status(404).json({ error: "Book not found" });
+      const [book] = await tx
+        .select()
+        .from(bookClubBooksTable)
+        .where(and(eq(bookClubBooksTable.id, bookId), eq(bookClubBooksTable.clubId, id)));
+      if (!book) return { status: 404, error: "Book not found" } as const;
 
-    if (club.ownerId !== userId && book.addedBy !== userId)
-      return res.status(403).json({ error: "Not allowed" });
+      if (club.ownerId !== userId && book.addedBy !== userId)
+        return { status: 403, error: "Not allowed" } as const;
 
-    await db.delete(bookClubBooksTable).where(eq(bookClubBooksTable.id, bookId));
+      await tx.delete(bookClubBooksTable).where(eq(bookClubBooksTable.id, bookId));
+      return { status: 204 } as const;
+    });
+
+    if (result.status !== 204) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to remove book" });
@@ -462,21 +540,30 @@ router.get("/:id/books/:bookId/posts", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const { id, bookId } = req.params;
 
-    const membership = await getMembership(id, userId);
-    if (!membership) return res.status(403).json({ error: "Not a member" });
+    const result = await withUserContext(userId, async (tx) => {
+      const membership = await getMembership(tx, id, userId);
+      if (!membership) return { status: 403, error: "Not a member" } as const;
 
-    const posts = await db
-      .select()
-      .from(bookClubPostsTable)
-      .where(
-        and(
-          eq(bookClubPostsTable.clubId, id),
-          eq(bookClubPostsTable.clubBookId, bookId),
-        ),
-      )
-      .orderBy(desc(bookClubPostsTable.createdAt));
+      const posts = await tx
+        .select()
+        .from(bookClubPostsTable)
+        .where(
+          and(
+            eq(bookClubPostsTable.clubId, id),
+            eq(bookClubPostsTable.clubBookId, bookId),
+          ),
+        )
+        .orderBy(desc(bookClubPostsTable.createdAt));
 
-    return res.json(posts);
+      return { status: 200, posts } as const;
+    });
+
+    if (result.status !== 200) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
+
+    return res.json(result.posts);
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch posts" });
   }
@@ -487,10 +574,6 @@ router.post("/:id/books/:bookId/posts", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
     const { id, bookId } = req.params;
-
-    const membership = await getMembership(id, userId);
-    if (!membership) return res.status(403).json({ error: "Not a member" });
-
     const { content, progressPage, displayName } = req.body as {
       content: string;
       progressPage?: number;
@@ -498,27 +581,39 @@ router.post("/:id/books/:bookId/posts", requireAuth, async (req, res) => {
     };
     if (!content?.trim()) return res.status(400).json({ error: "content is required" });
 
-    const [book] = await db
-      .select()
-      .from(bookClubBooksTable)
-      .where(and(eq(bookClubBooksTable.id, bookId), eq(bookClubBooksTable.clubId, id)));
-    if (!book) return res.status(404).json({ error: "Book not found" });
+    const result = await withUserContext(userId, async (tx) => {
+      const membership = await getMembership(tx, id, userId);
+      if (!membership) return { status: 403, error: "Not a member" } as const;
 
-    const [post] = await db
-      .insert(bookClubPostsTable)
-      .values({
-        id: generateId(),
-        clubId: id,
-        clubBookId: bookId,
-        userId,
-        userDisplayName: displayName?.trim() ?? membership.displayName ?? null,
-        content: content.trim(),
-        progressPage: progressPage ?? null,
-        createdAt: new Date(),
-      })
-      .returning();
+      const [book] = await tx
+        .select()
+        .from(bookClubBooksTable)
+        .where(and(eq(bookClubBooksTable.id, bookId), eq(bookClubBooksTable.clubId, id)));
+      if (!book) return { status: 404, error: "Book not found" } as const;
 
-    return res.status(201).json(post);
+      const [post] = await tx
+        .insert(bookClubPostsTable)
+        .values({
+          id: generateId(),
+          clubId: id,
+          clubBookId: bookId,
+          userId,
+          userDisplayName: displayName?.trim() ?? membership.displayName ?? null,
+          content: content.trim(),
+          progressPage: progressPage ?? null,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      return { status: 201, post } as const;
+    });
+
+    if (result.status !== 201) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
+
+    return res.status(201).json(result.post);
   } catch (err) {
     return res.status(500).json({ error: "Failed to add post" });
   }
@@ -530,19 +625,27 @@ router.delete("/:id/books/:bookId/posts/:postId", requireAuth, async (req, res) 
     const { userId } = req as AuthedRequest;
     const { id, postId } = req.params;
 
-    const [club] = await db.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
-    if (!club) return res.status(404).json({ error: "Not found" });
+    const result = await withUserContext(userId, async (tx) => {
+      const [club] = await tx.select().from(bookClubsTable).where(eq(bookClubsTable.id, id));
+      if (!club) return { status: 404, error: "Not found" } as const;
 
-    const [post] = await db
-      .select()
-      .from(bookClubPostsTable)
-      .where(eq(bookClubPostsTable.id, postId));
-    if (!post) return res.status(404).json({ error: "Post not found" });
+      const [post] = await tx
+        .select()
+        .from(bookClubPostsTable)
+        .where(eq(bookClubPostsTable.id, postId));
+      if (!post) return { status: 404, error: "Post not found" } as const;
 
-    if (post.userId !== userId && club.ownerId !== userId)
-      return res.status(403).json({ error: "Not allowed" });
+      if (post.userId !== userId && club.ownerId !== userId)
+        return { status: 403, error: "Not allowed" } as const;
 
-    await db.delete(bookClubPostsTable).where(eq(bookClubPostsTable.id, postId));
+      await tx.delete(bookClubPostsTable).where(eq(bookClubPostsTable.id, postId));
+      return { status: 204 } as const;
+    });
+
+    if (result.status !== 204) {
+      const { status, ...body } = result;
+      return res.status(status).json(body);
+    }
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to delete post" });

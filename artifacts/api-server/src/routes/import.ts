@@ -6,7 +6,7 @@
     import { eq } from "drizzle-orm";
     import { getAuth } from "@clerk/express";
     import multer from "multer";
-    import { db, booksTable } from "@workspace/db";
+    import { booksTable, withUserContext } from "@workspace/db";
     import { parseCSV, parseDOCX, parsePDF, type ParsedBook } from "../import-parsers.js";
     import { enrichBooksInBackground as enrichBooks } from "../lib/enrich.js";
 
@@ -141,103 +141,112 @@
         return res.status(400).json({ error: "books array is required" });
       }
 
-      // Fetch existing books for duplicate detection — prefer ISBN match
-      // when available (more reliable than title/author spelling), fall
-      // back to title+author for books without an ISBN on either side.
-      const existing = await db
-        .select({ title: booksTable.title, author: booksTable.author, isbn: booksTable.isbn })
-        .from(booksTable)
-        .where(eq(booksTable.userId, userId));
+      const { imported, skipped, insertedForEnrichment } = await withUserContext(
+        userId,
+        async (tx) => {
+          // Fetch existing books for duplicate detection — prefer ISBN match
+          // when available (more reliable than title/author spelling), fall
+          // back to title+author for books without an ISBN on either side.
+          const existing = await tx
+            .select({ title: booksTable.title, author: booksTable.author, isbn: booksTable.isbn })
+            .from(booksTable)
+            .where(eq(booksTable.userId, userId));
 
-      const existingKeys = new Set(
-        existing.map((b) => `${b.title.toLowerCase()}|${b.author.toLowerCase()}`)
-      );
-      const existingIsbns = new Set(
-        existing.map((b) => b.isbn).filter((isbn): isbn is string => Boolean(isbn)),
-      );
+          const existingKeys = new Set(
+            existing.map((b) => `${b.title.toLowerCase()}|${b.author.toLowerCase()}`)
+          );
+          const existingIsbns = new Set(
+            existing.map((b) => b.isbn).filter((isbn): isbn is string => Boolean(isbn)),
+          );
 
-      let imported = 0;
-      let skipped = 0;
+          let imported = 0;
+          let skipped = 0;
 
-      const insertedForEnrichment: { 
-        id: string; 
-        title: string; 
-        author: string; 
-        isbn?: string; 
-        hasMissingFields: boolean 
-      }[] = [];
+          const insertedForEnrichment: {
+            id: string;
+            title: string;
+            author: string;
+            isbn?: string;
+            hasMissingFields: boolean;
+          }[] = [];
 
-      for (const book of books) {
-        if (!book.title?.trim() || !book.author?.trim()) {
-          skipped++;
-          continue;
-        }
+          for (const book of books) {
+            if (!book.title?.trim() || !book.author?.trim()) {
+              skipped++;
+              continue;
+            }
 
-        const cleanIsbn = book.isbn ? book.isbn.replace(/[^0-9Xx]/g, "") : null;
-        const key = `${book.title.trim().toLowerCase()}|${book.author.trim().toLowerCase()}`;
+            const cleanIsbn = book.isbn ? book.isbn.replace(/[^0-9Xx]/g, "") : null;
+            const key = `${book.title.trim().toLowerCase()}|${book.author.trim().toLowerCase()}`;
 
-        const isDuplicate = (cleanIsbn && existingIsbns.has(cleanIsbn)) || existingKeys.has(key);
-        if (isDuplicate) {
-          skipped++;
-          continue;
-        }
+            const isDuplicate = (cleanIsbn && existingIsbns.has(cleanIsbn)) || existingKeys.has(key);
+            if (isDuplicate) {
+              skipped++;
+              continue;
+            }
 
-        const now = new Date();
-        const dateRead = book.dateRead ? new Date(book.dateRead) : null;
-        const bookId = generateId();
+            const now = new Date();
+            const dateRead = book.dateRead ? new Date(book.dateRead) : null;
+            const bookId = generateId();
 
-        try {
-          await db.insert(booksTable).values({
-            id: bookId,
-            userId,
-            title: book.title.trim(),
-            author: book.author.trim(),
-            coverColor: randomColor(),
-            isbn: cleanIsbn,
-            status: book.status ?? "want_to_read",
-            rating: book.rating ?? null,
-            pages: book.pages ?? null,
-            genre: book.genre ?? null,
-            dateAdded: now,
-            dateStarted: (book.status === "reading" || book.status === "read") ? now : null,
-            dateFinished: (book.status === "read") ? (dateRead ?? now) : null,
-          });
+            try {
+              await tx.insert(booksTable).values({
+                id: bookId,
+                userId,
+                title: book.title.trim(),
+                author: book.author.trim(),
+                coverColor: randomColor(),
+                isbn: cleanIsbn,
+                status: book.status ?? "want_to_read",
+                rating: book.rating ?? null,
+                pages: book.pages ?? null,
+                genre: book.genre ?? null,
+                dateAdded: now,
+                dateStarted: (book.status === "reading" || book.status === "read") ? now : null,
+                dateFinished: (book.status === "read") ? (dateRead ?? now) : null,
+              });
 
-          existingKeys.add(key);
-          if (cleanIsbn) existingIsbns.add(cleanIsbn);
-          imported++;
+              existingKeys.add(key);
+              if (cleanIsbn) existingIsbns.add(cleanIsbn);
+              imported++;
 
-          // Check if book lacks metadata and has sufficient info (Title or ISBN) to search
-          const hasSearchableInfo = Boolean(book.isbn || book.title?.trim());
-          const isMissingMetadata = !book.pages || !book.genre || !book.coverUrl;
-          const needsEnrichment = isMissingMetadata && hasSearchableInfo;
+              // Check if book lacks metadata and has sufficient info (Title or ISBN) to search
+              const hasSearchableInfo = Boolean(book.isbn || book.title?.trim());
+              const isMissingMetadata = !book.pages || !book.genre;
+              const needsEnrichment = isMissingMetadata && hasSearchableInfo;
 
-          if (needsEnrichment) {
-            insertedForEnrichment.push({
-              id: bookId,
-              title: book.title.trim(),
-              author: book.author.trim(),
-              isbn: book.isbn,
-              hasMissingFields: true,
-            });
+              if (needsEnrichment) {
+                insertedForEnrichment.push({
+                  id: bookId,
+                  title: book.title.trim(),
+                  author: book.author.trim(),
+                  isbn: book.isbn,
+                  hasMissingFields: true,
+                });
+              }
+            } catch (error) {
+              console.error(`[import/confirm] Failed to insert book "${book.title}":`, error);
+              skipped++;
+            }
           }
-        } catch (error) {
-          console.error(`[import/confirm] Failed to insert book "${book.title}":`, error);
-          skipped++;
-        }
-      }
 
-      // Trigger background enrichment asynchronously (fire and forget)
+          return { imported, skipped, insertedForEnrichment };
+        },
+      );
+
+      // Trigger background enrichment asynchronously (fire and forget) —
+      // outside the transaction, since it's fire-and-forget and does its
+      // own withUserContext-wrapped writes (see enrich.ts).
       if (insertedForEnrichment.length > 0) {
-        enrichBooks(insertedForEnrichment).catch((err) => {
+        enrichBooks(userId, insertedForEnrichment).catch((err) => {
           console.error("[import/confirm] Background enrichment trigger failed:", err);
         });
       }
 
-      return res.json({ 
-        imported, 
-        skipped, 
-        enriching: insertedForEnrichment.length 
+      return res.json({
+        imported,
+        skipped,
+        enriching: insertedForEnrichment.length
       });
     });
 
