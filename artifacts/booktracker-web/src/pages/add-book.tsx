@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ export function AddBook() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const createBook = useCreateBook();
   const [mode, setMode] = useState<Mode>("single");
 
@@ -102,12 +104,25 @@ export function AddBook() {
           pages: values.pages === "" ? null : (values.pages as number),
           genre: values.genre || null,
           coverUrl: lookedUpCoverUrl ?? null,
+          isbn: isbnInput.replace(/[^0-9Xx]/g, "") || null,
         },
       },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() });
           setLocation("/");
+        },
+        onError: (err: any) => {
+          const isDuplicate = err?.status === 409;
+          toast({
+            title: isDuplicate
+              ? t("addBook.errorDuplicateTitle")
+              : (t("addBook.errorAddFailed") ?? "Couldn't add book"),
+            description: isDuplicate
+              ? (err?.data?.message ?? t("addBook.errorDuplicateDesc"))
+              : (err?.message ?? "Something went wrong. Please try again."),
+            variant: "destructive",
+          });
         },
       },
     );

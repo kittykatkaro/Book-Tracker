@@ -25,6 +25,8 @@ export interface Book {
   coverColor: string;
   /** @nullable */
   coverUrl?: string | null;
+  /** @nullable */
+  isbn?: string | null;
   status: BookStatus;
   /** @nullable */
   rating?: number | null;
@@ -70,6 +72,8 @@ export interface BookInput {
   genre?: string | null;
   /** @nullable */
   coverUrl?: string | null;
+  /** @nullable */
+  isbn?: string | null;
 }
 
 export type BookPatchStatus = typeof BookPatchStatus[keyof typeof BookPatchStatus];
