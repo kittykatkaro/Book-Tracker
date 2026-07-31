@@ -169,6 +169,7 @@
     "importCount_other": "Import {{count}} books",
     "addingCount": "Adding {{count}} book…",
     "addingCount_other": "Adding {{count}} books…",
+    "addingProgress": "Adding books… {{imported}} of {{total}}",
     "complete": "Import complete",
     "failed": "Import failed",
     "resultAdded": "{{count}} book added to your library",

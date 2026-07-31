@@ -318,6 +318,7 @@
     "importCount": "{{count}} Buch importieren",
     "importCount_other": "{{count}} Bücher importieren",
     "addingCount": "{{count}} Bücher werden zur Bibliothek hinzugefügt…",
+    "addingProgress": "Bücher werden hinzugefügt … {{imported}} von {{total}}",
     "statusRead": "Gelesen",
     "statusReading": "Lese ich",
     "statusWantToRead": "Möchte lesen",
