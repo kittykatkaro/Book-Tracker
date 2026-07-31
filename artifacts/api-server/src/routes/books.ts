@@ -15,6 +15,12 @@ import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
 
+router.use((req, res, next) => {
+  console.log(`[books] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+
 const COVER_COLORS = [
   "#2D6A4F",
   "#C8873F",
@@ -132,6 +138,7 @@ router.get("/", requireAuth, async (req, res) => {
       .orderBy(desc(booksTable.dateAdded));
     return res.json(rows.map(formatBook));
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     return res.status(500).json({ error: "Failed to fetch books" });
   }
 });
@@ -176,6 +183,7 @@ router.get("/stats", requireAuth, async (req, res) => {
       topGenres,
     });
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     return res.status(500).json({ error: "Failed to fetch stats" });
   }
 });
@@ -228,6 +236,7 @@ router.get("/isbn-lookup", async (req, res) => {
       publishYear,
     });
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     return res.status(500).json({ error: "Failed to lookup ISBN" });
   }
 });
@@ -351,6 +360,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     return res.status(201).json(formatBook(book));
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     console.error("Error creating book:", err);
     return res.status(500).json({ error: "Failed to create book" });
   }
@@ -372,6 +382,7 @@ router.get("/:id", requireAuth, async (req, res) => {
     if (!book) return res.status(404).json({ error: "Not found" });
     return res.json(formatBook(book));
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     return res.status(500).json({ error: "Failed to fetch book" });
   }
 });
@@ -451,6 +462,7 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
 
     return res.json({ coverUrl: publicUrl, book: formatBook(book) });
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     console.error("[cover-upload]", err);
     return res.status(500).json({ error: "Failed to upload cover" });
   }
@@ -579,6 +591,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
     );
     return res.status(204).send();
   } catch (err) {
+    console.error(`[books] ERROR on ${req.method} ${req.originalUrl}:`, err);
     return res.status(500).json({ error: "Failed to delete book" });
   }
 });
