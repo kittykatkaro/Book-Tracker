@@ -2,8 +2,8 @@
  * Shared enrichment utilities — used by both the import flow and the
  * on-demand enrich-all endpoint.
  */
-import { eq, and } from "drizzle-orm";
-import { booksTable, withUserContext } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { db, booksTable } from "@workspace/db";
 import { classifyGenre } from "./genres.js";
 import { cacheGet, cacheSet, CACHE_TTL } from "./openlibrary-cache.js";
 
@@ -55,18 +55,10 @@ export async function lookupByTitleAuthor(
  * for any fields (pages, genre) that are still null.
  * Runs entirely in the background — errors are swallowed per book.
  *
- * `userId` is required (not just for filtering — these books were already
- * fetched from a user-scoped query by the caller) so the DB writes carry
- * the same RLS session context as the rest of that user's requests; see
- * withUserContext() in lib/db. Without it, these background writes would
- * run with no app.current_user_id set, which the RLS `withCheck` policy
- * on `books` would reject once RLS is actually enforced for this role.
- *
  * `onProgress` (optional) is called after each book is processed —
  * used by the import job tracker to report "enriching X/Y" status.
  */
 export async function enrichBooksInBackground(
-  userId: string,
   books: { id: string; title: string; author: string }[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<void> {
@@ -77,24 +69,19 @@ export async function enrichBooksInBackground(
       if (!result) continue;
       if (!result.pages && !result.genre) continue;
 
-      await withUserContext(userId, async (tx) => {
-        // Only update fields that are still null in the DB
-        const [current] = await tx
-          .select({ pages: booksTable.pages, genre: booksTable.genre })
-          .from(booksTable)
-          .where(and(eq(booksTable.id, book.id), eq(booksTable.userId, userId)));
-        if (!current) return;
+      // Only update fields that are still null in the DB
+      const [current] = await db
+        .select({ pages: booksTable.pages, genre: booksTable.genre })
+        .from(booksTable)
+        .where(eq(booksTable.id, book.id));
+      if (!current) continue;
 
-        const patch: Partial<typeof booksTable.$inferInsert> = {};
-        if (!current.pages && result.pages) patch.pages = result.pages;
-        if (!current.genre && result.genre) patch.genre = result.genre;
-        if (Object.keys(patch).length === 0) return;
+      const patch: Partial<typeof booksTable.$inferInsert> = {};
+      if (!current.pages && result.pages) patch.pages = result.pages;
+      if (!current.genre && result.genre) patch.genre = result.genre;
+      if (Object.keys(patch).length === 0) continue;
 
-        await tx
-          .update(booksTable)
-          .set(patch)
-          .where(and(eq(booksTable.id, book.id), eq(booksTable.userId, userId)));
-      });
+      await db.update(booksTable).set(patch).where(eq(booksTable.id, book.id));
     } catch {
       // swallow — enrichment is best-effort
     } finally {

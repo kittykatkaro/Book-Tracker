@@ -8,7 +8,7 @@ import { eq, desc, and, or, isNull } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import multer from "multer";
 import { randomUUID } from "crypto";
-import { booksTable, withUserContext } from "@workspace/db";
+import { db, booksTable } from "@workspace/db";
 import { enrichBooksInBackground } from "../lib/enrich.js";
 import { classifyGenre, aggregateGenreCounts } from "../lib/genres.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
@@ -121,17 +121,15 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
     const status = req.query.status as string | undefined;
-    const rows = await withUserContext(userId, async (tx) => {
-      const userFilter = eq(booksTable.userId, userId);
-      const where = status
-        ? and(userFilter, eq(booksTable.status, status))
-        : userFilter;
-      return tx
-        .select()
-        .from(booksTable)
-        .where(where)
-        .orderBy(desc(booksTable.dateAdded));
-    });
+    const userFilter = eq(booksTable.userId, userId);
+    const where = status
+      ? and(userFilter, eq(booksTable.status, status))
+      : userFilter;
+    const rows = await db
+      .select()
+      .from(booksTable)
+      .where(where)
+      .orderBy(desc(booksTable.dateAdded));
     return res.json(rows.map(formatBook));
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch books" });
@@ -142,9 +140,10 @@ router.get("/", requireAuth, async (req, res) => {
 router.get("/stats", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
-    const books = await withUserContext(userId, (tx) =>
-      tx.select().from(booksTable).where(eq(booksTable.userId, userId)),
-    );
+    const books = await db
+      .select()
+      .from(booksTable)
+      .where(eq(booksTable.userId, userId));
 
     const thisYear = new Date().getFullYear();
     const ratedBooks = books.filter((b) => b.rating != null);
@@ -314,51 +313,43 @@ router.post("/", requireAuth, async (req, res) => {
 
     const cleanIsbn = data.isbn ? data.isbn.replace(/[^0-9Xx]/g, "") : null;
 
-    const result = await withUserContext(userId, async (tx) => {
-      if (cleanIsbn) {
-        const [existing] = await tx
-          .select({ id: booksTable.id, title: booksTable.title })
-          .from(booksTable)
-          .where(and(eq(booksTable.userId, userId), eq(booksTable.isbn, cleanIsbn)));
+    if (cleanIsbn) {
+      const [existing] = await db
+        .select({ id: booksTable.id, title: booksTable.title })
+        .from(booksTable)
+        .where(and(eq(booksTable.userId, userId), eq(booksTable.isbn, cleanIsbn)));
 
-        if (existing) {
-          return { duplicate: existing } as const;
-        }
+      if (existing) {
+        return res.status(409).json({
+          error: "duplicate_isbn",
+          message: `"${existing.title}" is already in your library.`,
+          bookId: existing.id,
+        });
       }
-
-      const now = new Date();
-      const [book] = await tx
-        .insert(booksTable)
-        .values({
-          id: generateId(),
-          userId,
-          title: data.title,
-          author: data.author,
-          coverColor: randomColor(),
-          coverUrl: data.coverUrl ?? null,
-          isbn: cleanIsbn,
-          status: data.status,
-          rating: data.rating ?? null,
-          pages: data.pages ?? null,
-          genre: data.genre ?? null,
-          dateAdded: now,
-          dateStarted: (data.status === "reading" || data.status === "read") ? now : null,
-          dateFinished: (data.status === "read") ? now : null,
-        })
-        .returning();
-
-      return { book } as const;
-    });
-
-    if ("duplicate" in result) {
-      return res.status(409).json({
-        error: "duplicate_isbn",
-        message: `"${result.duplicate.title}" is already in your library.`,
-        bookId: result.duplicate.id,
-      });
     }
 
-    return res.status(201).json(formatBook(result.book));
+    const now = new Date();
+    const [book] = await db
+      .insert(booksTable)
+      .values({
+        id: generateId(),
+        userId,
+        title: data.title,
+        author: data.author,
+        coverColor: randomColor(),
+        coverUrl: data.coverUrl ?? null,
+        isbn: cleanIsbn,
+        status: data.status,
+        rating: data.rating ?? null,
+        pages: data.pages ?? null,
+        genre: data.genre ?? null,
+        dateAdded: now,
+        dateStarted: (data.status === "reading" || data.status === "read") ? now : null,
+        dateFinished: (data.status === "read") ? now : null,
+      })
+      .returning();
+
+    return res.status(201).json(formatBook(book));
   } catch (err) {
     console.error("Error creating book:", err);
     return res.status(500).json({ error: "Failed to create book" });
@@ -369,16 +360,14 @@ router.post("/", requireAuth, async (req, res) => {
 router.get("/:id", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
-    const [book] = await withUserContext(userId, (tx) =>
-      tx
-        .select()
-        .from(booksTable)
-        .where(
-          and(
-            eq(booksTable.id, req.params.id as string),
-            eq(booksTable.userId, userId as string),
-          ),
-        ),
+    const [book] = await db
+      .select()
+      .from(booksTable)
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
     );
     if (!book) return res.status(404).json({ error: "Not found" });
     return res.json(formatBook(book));
@@ -393,28 +382,26 @@ router.post("/enrich-all", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
 
     // Fetch books for the authenticated user that are missing pages or genre
-    const booksToEnrich = await withUserContext(userId, (tx) =>
-      tx
-        .select({
-          id: booksTable.id,
-          title: booksTable.title,
-          author: booksTable.author,
-        })
-        .from(booksTable)
-        .where(
-          and(
-            eq(booksTable.userId, userId),
-            or(isNull(booksTable.pages), isNull(booksTable.genre)),
-          ),
+    const booksToEnrich = await db
+      .select({
+        id: booksTable.id,
+        title: booksTable.title,
+        author: booksTable.author,
+      })
+      .from(booksTable)
+      .where(
+        and(
+          eq(booksTable.userId, userId),
+          or(isNull(booksTable.pages), isNull(booksTable.genre)),
         ),
-    );
+      );
 
     if (booksToEnrich.length === 0) {
       return res.json({ enriching: 0 });
     }
 
     // Fire-and-forget — do NOT await
-    enrichBooksInBackground(userId, booksToEnrich).catch((err) => {
+    enrichBooksInBackground(booksToEnrich).catch((err) => {
       console.error("[enrich-all] Background enrichment failed:", err);
     });
 
@@ -438,33 +425,29 @@ router.post("/:id/cover", requireAuth, async (req, res) => {
   if (!file) return res.status(400).json({ error: "No file uploaded" });
 
   try {
-    const [existing] = await withUserContext(userId, (tx) =>
-      tx
-        .select()
-        .from(booksTable)
-        .where(
-          and(
-            eq(booksTable.id, req.params.id as string),
-            eq(booksTable.userId, userId as string),
-          ),
-        ),
+    const [existing] = await db
+      .select()
+      .from(booksTable)
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
     );
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     const publicUrl = await uploadCoverToGcs(file.buffer, file.mimetype);
 
-    const [book] = await withUserContext(userId, (tx) =>
-      tx
-        .update(booksTable)
-        .set({ coverUrl: publicUrl })
-        .where(
-          and(
-            eq(booksTable.id, req.params.id as string),
-            eq(booksTable.userId, userId as string),
-          ),
+    const [book] = await db
+      .update(booksTable)
+      .set({ coverUrl: publicUrl })
+      .where(
+        and(
+          eq(booksTable.id, req.params.id as string), 
+          eq(booksTable.userId, userId as string)
         )
-        .returning(),
-    );
+      )
+      .returning();
 
     return res.json({ coverUrl: publicUrl, book: formatBook(book) });
   } catch (err) {
@@ -479,100 +462,92 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const { userId } = req as AuthedRequest;
     const id = req.params.id as string;
 
-    const result = await withUserContext(userId, async (tx) => {
-      // 1. Fetch the existing book record to check ownership and state transitions
-      const existingBook = await tx
-        .select()
-        .from(booksTable)
-        .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
-        .then((rows) => rows[0]);
+    // 1. Fetch the existing book record to check ownership and state transitions
+    const existingBook = await db
+      .select()
+      .from(booksTable)
+      .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
+      .then((rows) => rows[0]);
 
-      if (!existingBook) {
-        return { notFound: true } as const;
-      }
-
-      // 2. Destructure ONLY whitelisted fields from req.body to prevent mass assignment
-      const {
-        title,
-        author,
-        genre,
-        status,
-        rating,
-        pages,
-        notes,
-        coverUrl,
-        isbn,
-        publishedYear,
-        description,
-        dateStarted: rawDateStarted,
-        dateFinished: rawDateFinished,
-      } = req.body;
-
-      // Build our clean update payload
-      const updatePayload: Record<string, any> = {};
-
-      if (title !== undefined) updatePayload.title = title;
-      if (author !== undefined) updatePayload.author = author;
-      if (genre !== undefined) updatePayload.genre = genre;
-      if (rating !== undefined) updatePayload.rating = rating;
-      if (pages !== undefined) updatePayload.pages = pages;
-      if (notes !== undefined) updatePayload.notes = notes;
-      if (coverUrl !== undefined) updatePayload.coverUrl = coverUrl;
-      if (isbn !== undefined) updatePayload.isbn = isbn;
-      if (publishedYear !== undefined) updatePayload.publishedYear = publishedYear;
-      if (description !== undefined) updatePayload.description = description;
-
-      // 3. Handle Status Changes and Automatic Date Tracking
-      if (status !== undefined) {
-        updatePayload.status = status;
-
-        // Auto-set dateStarted if transitioning to 'reading' and not explicitly provided
-        if (
-          status === "reading" &&
-          existingBook.status !== "reading" &&
-          rawDateStarted === undefined
-        ) {
-          updatePayload.dateStarted = new Date();
-        }
-
-        // Auto-set dateFinished if transitioning to 'read' and not explicitly provided
-        if (
-          status === "read" &&
-          existingBook.status !== "read" &&
-          rawDateFinished === undefined
-        ) {
-          updatePayload.dateFinished = new Date();
-        }
-      }
-
-      // 4. Handle explicitly provided dates (convert string ISO dates to Date objects/null)
-      if (rawDateStarted !== undefined) {
-        updatePayload.dateStarted = rawDateStarted ? new Date(rawDateStarted) : null;
-      }
-      if (rawDateFinished !== undefined) {
-        updatePayload.dateFinished = rawDateFinished ? new Date(rawDateFinished) : null;
-      }
-
-      // If no valid update fields were provided, return early
-      if (Object.keys(updatePayload).length === 0) {
-        return { book: existingBook } as const;
-      }
-
-      // 5. Perform the secure update
-      const updatedBooks = await tx
-        .update(booksTable)
-        .set(updatePayload)
-        .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
-        .returning();
-
-      return { book: updatedBooks[0] } as const;
-    });
-
-    if ("notFound" in result) {
+    if (!existingBook) {
       return res.status(404).json({ error: "Book not found" });
     }
 
-    return res.json(formatBook(result.book));
+    // 2. Destructure ONLY whitelisted fields from req.body to prevent mass assignment
+    const {
+      title,
+      author,
+      genre,
+      status,
+      rating,
+      pages,
+      notes,
+      coverUrl,
+      isbn,
+      publishedYear,
+      description,
+      dateStarted: rawDateStarted,
+      dateFinished: rawDateFinished,
+    } = req.body;
+
+    // Build our clean update payload
+    const updatePayload: Record<string, any> = {};
+
+    if (title !== undefined) updatePayload.title = title;
+    if (author !== undefined) updatePayload.author = author;
+    if (genre !== undefined) updatePayload.genre = genre;
+    if (rating !== undefined) updatePayload.rating = rating;
+    if (pages !== undefined) updatePayload.pages = pages;
+    if (notes !== undefined) updatePayload.notes = notes;
+    if (coverUrl !== undefined) updatePayload.coverUrl = coverUrl;
+    if (isbn !== undefined) updatePayload.isbn = isbn;
+    if (publishedYear !== undefined) updatePayload.publishedYear = publishedYear;
+    if (description !== undefined) updatePayload.description = description;
+
+    // 3. Handle Status Changes and Automatic Date Tracking
+    if (status !== undefined) {
+      updatePayload.status = status;
+
+      // Auto-set dateStarted if transitioning to 'reading' and not explicitly provided
+      if (
+        status === "reading" &&
+        existingBook.status !== "reading" &&
+        rawDateStarted === undefined
+      ) {
+        updatePayload.dateStarted = new Date();
+      }
+
+      // Auto-set dateFinished if transitioning to 'read' and not explicitly provided
+      if (
+        status === "read" &&
+        existingBook.status !== "read" &&
+        rawDateFinished === undefined
+      ) {
+        updatePayload.dateFinished = new Date();
+      }
+    }
+
+    // 4. Handle explicitly provided dates (convert string ISO dates to Date objects/null)
+    if (rawDateStarted !== undefined) {
+      updatePayload.dateStarted = rawDateStarted ? new Date(rawDateStarted) : null;
+    }
+    if (rawDateFinished !== undefined) {
+      updatePayload.dateFinished = rawDateFinished ? new Date(rawDateFinished) : null;
+    }
+
+    // If no valid update fields were provided, return early
+    if (Object.keys(updatePayload).length === 0) {
+      return res.json(formatBook(existingBook));
+    }
+
+    // 5. Perform the secure update
+    const updatedBooks = await db
+      .update(booksTable)
+      .set(updatePayload)
+      .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
+      .returning();
+
+    return res.json(formatBook(updatedBooks[0]));
   } catch (error) {
     console.error(`[PATCH /api/books/${req.params.id}] Error updating book:`, error);
     return res.status(500).json({ error: "Failed to update book" });
@@ -583,30 +558,25 @@ router.patch("/:id", requireAuth, async (req, res) => {
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
-    const deleted = await withUserContext(userId, async (tx) => {
-      const [existing] = await tx
-        .select()
-        .from(booksTable)
-        .where(
-          and(
-            eq(booksTable.id, req.params.id as string),
-            eq(booksTable.userId, userId as string),
-          ),
-        );
-      if (!existing) return false;
+    const [existing] = await db
+      .select()
+      .from(booksTable)
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
+    if (!existing) return res.status(404).json({ error: "Not found" });
 
-      await tx
-        .delete(booksTable)
-        .where(
-          and(
-            eq(booksTable.id, req.params.id as string),
-            eq(booksTable.userId, userId as string),
-          ),
-        );
-      return true;
-    });
-
-    if (!deleted) return res.status(404).json({ error: "Not found" });
+    await db
+      .delete(booksTable)
+    .where(
+      and(
+        eq(booksTable.id, req.params.id as string), 
+        eq(booksTable.userId, userId as string)
+      )
+    );
     return res.status(204).send();
   } catch (err) {
     return res.status(500).json({ error: "Failed to delete book" });
