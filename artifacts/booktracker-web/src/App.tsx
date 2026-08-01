@@ -323,7 +323,12 @@ function ClerkProviderWithRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      themes={["light", "dark", "theme-dark-academia", "theme-cozy-nook", "theme-pastel-sunset", "theme-modern-social"]}
+    >
       <WouterRouter base={basePath}>
         <ClerkProviderWithRoutes />
       </WouterRouter>

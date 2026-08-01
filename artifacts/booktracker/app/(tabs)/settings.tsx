@@ -16,6 +16,16 @@ import { useColors } from '@/hooks/useColors';
 import { useTheme } from '@/context/ThemeContext';
 import { Feather } from '@expo/vector-icons';
 
+const APPEARANCE_OPTIONS = [
+  { id: 'light', labelKey: 'settings.themeLight', swatches: ['#F8F4EE', '#2D6A4F', '#C8873F'] },
+  { id: 'dark', labelKey: 'settings.themeDark', swatches: ['#1A1A1C', '#52B788', '#E8A35A'] },
+  { id: 'system', labelKey: 'settings.themeSystem', swatches: ['#F8F4EE', '#1A1A1C'] },
+  { id: 'dark-academia', labelKey: 'settings.paletteDarkAcademia', swatches: ['#1C1625', '#D4A359', '#8B3A4A'] },
+  { id: 'cozy-nook', labelKey: 'settings.paletteCozyNook', swatches: ['#FDFBF7', '#5B7053', '#C27D60'] },
+  { id: 'pastel-sunset', labelKey: 'settings.palettePastelSunset', swatches: ['#FAF7FF', '#9A7AA0', '#FF7E95'] },
+  { id: 'modern-social', labelKey: 'settings.paletteModernSocial', swatches: ['#0F172A', '#0EA5E9', '#F43F5E'] },
+] as const;
+
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const colors = useColors();
@@ -116,51 +126,55 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Theme section */}
+        {/* Appearance section */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.sectionHeader}>
             <View style={[styles.iconCircle, { backgroundColor: colors.primary + '18' }]}>
-              <Feather name={theme === 'dark' ? 'moon' : 'sun'} size={16} color={colors.primary} />
+              <Feather name="droplet" size={16} color={colors.primary} />
             </View>
             <View style={styles.sectionHeaderText}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                {t('settings.themeTitle')}
+                {t('settings.appearanceTitle')}
               </Text>
               <Text style={[styles.sectionDesc, { color: colors.mutedForeground }]}>
-                {t('settings.themeDesc')}
+                {t('settings.appearanceDesc')}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.row, { borderTopColor: colors.border }]}>
-            <View style={styles.langButtons}>
-              {(['light', 'dark', 'system'] as const).map((mode) => {
-                const active = theme === mode;
-                const labelKey = mode === 'system' ? 'settings.themeSystem' : `settings.theme${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
-                return (
-                  <Pressable
-                    key={mode}
-                    onPress={() => setTheme(mode)}
-                    style={[
-                      styles.langBtn,
-                      {
-                        backgroundColor: active ? colors.primary : colors.secondary,
-                        borderColor: active ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.langBtnText,
-                        { color: active ? colors.primaryForeground : colors.mutedForeground },
-                      ]}
-                    >
-                      {t(labelKey)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+          <View style={[styles.row, { borderTopColor: colors.border, flexDirection: 'column', gap: 8 }]}>
+            {APPEARANCE_OPTIONS.map((opt) => {
+              const active = theme === opt.id || (opt.id === 'system' && !theme);
+              return (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => setTheme(opt.id)}
+                  style={[
+                    styles.paletteRow,
+                    {
+                      backgroundColor: active ? colors.primary + '14' : 'transparent',
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.paletteSwatches}>
+                    {opt.swatches.map((hex, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.paletteSwatch,
+                          { backgroundColor: hex, marginLeft: i === 0 ? 0 : -6 },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>
+                    {t(opt.labelKey)}
+                  </Text>
+                  {active && <Feather name="check" size={16} color={colors.primary} />}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -295,6 +309,23 @@ const styles = StyleSheet.create({
   sectionHeaderText: { flex: 1 },
   sectionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', lineHeight: 20 },
   sectionDesc: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 2, lineHeight: 18 },
+  paletteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  paletteSwatches: { flexDirection: 'row' },
+  paletteSwatch: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   row: {
     borderTopWidth: 1,

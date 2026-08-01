@@ -6,15 +6,53 @@ import { setLanguage } from "@/i18n"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Globe, Bell, LogOut, RotateCcw, Check, Sun, Moon, Monitor } from "lucide-react"
+import { Sparkles, Globe, Bell, LogOut, RotateCcw, Check, Palette } from "lucide-react"
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "")
+
+const APPEARANCE_OPTIONS = [
+  {
+    id: "light",
+    nameKey: "settings.themeLight",
+    swatches: ["#F8F4EE", "#2D6A4F", "#C8873F"],
+  },
+  {
+    id: "dark",
+    nameKey: "settings.themeDark",
+    swatches: ["#1A1A1C", "#52B788", "#E8A35A"],
+  },
+  {
+    id: "system",
+    nameKey: "settings.themeSystem",
+    swatches: ["#F8F4EE", "#1A1A1C"],
+  },
+  {
+    id: "theme-dark-academia",
+    nameKey: "settings.paletteDarkAcademia",
+    swatches: ["#1C1625", "#D4A359", "#8B3A4A"],
+  },
+  {
+    id: "theme-cozy-nook",
+    nameKey: "settings.paletteCozyNook",
+    swatches: ["#FDFBF7", "#5B7053", "#C27D60"],
+  },
+  {
+    id: "theme-pastel-sunset",
+    nameKey: "settings.palettePastelSunset",
+    swatches: ["#FAF7FF", "#9A7AA0", "#FF7E95"],
+  },
+  {
+    id: "theme-modern-social",
+    nameKey: "settings.paletteModernSocial",
+    swatches: ["#0F172A", "#0EA5E9", "#F43F5E"],
+  },
+] as const
 
 export function Settings() {
   const { t, i18n } = useTranslation()
   const { user } = useUser()
   const { signOut } = useClerk()
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   const storageKey = user?.id ? `banner_dismissed_${user.id}` : null
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -91,55 +129,46 @@ export function Settings() {
         </CardContent>
       </Card>
 
-      {/* Theme */}
+      {/* Appearance */}
       <Card className="border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              {resolvedTheme === "dark" ? (
-                <Moon className="h-4 w-4 text-primary" />
-              ) : (
-                <Sun className="h-4 w-4 text-primary" />
-              )}
+              <Palette className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold">{t("settings.themeTitle")}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">{t("settings.themeDesc")}</p>
+              <CardTitle className="text-base font-semibold">{t("settings.appearanceTitle")}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("settings.appearanceDesc")}</p>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={theme === "light" ? "default" : "outline"}
-              onClick={() => setTheme("light")}
-              className="rounded-full"
-              data-testid="button-theme-light"
-            >
-              <Sun className="h-3.5 w-3.5 mr-1.5" />
-              {t("settings.themeLight")}
-            </Button>
-            <Button
-              size="sm"
-              variant={theme === "dark" ? "default" : "outline"}
-              onClick={() => setTheme("dark")}
-              className="rounded-full"
-              data-testid="button-theme-dark"
-            >
-              <Moon className="h-3.5 w-3.5 mr-1.5" />
-              {t("settings.themeDark")}
-            </Button>
-            <Button
-              size="sm"
-              variant={theme === "system" || (!theme) ? "default" : "outline"}
-              onClick={() => setTheme("system")}
-              className="rounded-full"
-              data-testid="button-theme-system"
-            >
-              <Monitor className="h-3.5 w-3.5 mr-1.5" />
-              {t("settings.themeSystem")}
-            </Button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {APPEARANCE_OPTIONS.map((opt) => {
+              const isActive = theme === opt.id || (opt.id === "system" && !theme)
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setTheme(opt.id)}
+                  data-testid={`button-appearance-${opt.id}`}
+                  className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
+                    isActive ? "border-primary ring-1 ring-primary" : "border-border/50 hover:border-border"
+                  }`}
+                >
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {opt.swatches.map((hex, i) => (
+                      <div
+                        key={i}
+                        className="w-4 h-4 rounded-full border border-black/10"
+                        style={{ backgroundColor: hex, zIndex: opt.swatches.length - i }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-medium truncate flex-1">{t(opt.nameKey)}</span>
+                  {isActive && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                </button>
+              )
+            })}
           </div>
         </CardContent>
       </Card>

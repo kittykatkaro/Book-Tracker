@@ -6,11 +6,12 @@ import { useTheme } from '@/context/ThemeContext';
  *
  * The returned object contains all color tokens for the active palette
  * plus scheme-independent values like `radius`. The active palette is
- * driven by the user's theme preference (light/dark/system) managed in
- * ThemeContext; `system` follows the device appearance setting.
+ * driven by the user's theme preference (light/dark/system, or one of
+ * the fixed named palettes) managed in ThemeContext; `system` follows
+ * the device appearance setting.
  */
 export function useColors() {
   const { resolvedTheme } = useTheme();
-  const palette = resolvedTheme === 'dark' ? colors.dark : colors.light;
+  const palette = colors[resolvedTheme] ?? colors.light;
   return { ...palette, radius: colors.radius };
 }
