@@ -139,7 +139,8 @@
     "toReadList": "To Read List",
     "topGenres": "Top Genres",
     "noGenreData": "Not enough data yet. Add some genres to your books!",
-    "count": "Count"
+    "count": "Count",
+    "viewWrapped": "View Your Wrapped"
   },
   "clubs": {
     "title": "Book Clubs",
@@ -346,5 +347,38 @@
   },
   "lang": {
     "switchTo": "Deutsch"
+  },
+  "wrapped": {
+    "backToStats": "Back to Stats",
+    "noDataTitle": "Not enough data yet",
+    "noDataDesc": "Finish at least one book to unlock your Wrapped.",
+    "title": "Your Reading Wrapped",
+    "subtitle": "A shareable look back at your year in books.",
+    "yourYear": "Your {{year}} in books",
+    "introTitle": "Let's recap your year",
+    "booksReadLabel": "books finished in {{year}}",
+    "pagesReadLabel": "pages turned",
+    "topGenreLabel": "Your top genre",
+    "topGenreCount": "{{count}} books",
+    "topRatedLabel": "Your top-rated read",
+    "longestLabel": "Your longest read",
+    "pagesCount": "{{count}} pages",
+    "busiestMonthDesc": "your busiest month with {{count}} books finished",
+    "recapReady": "Your recap is ready",
+    "recapDesc": "Export a shareable card below in the format that fits your platform.",
+    "prevSlide": "Previous",
+    "nextSlide": "Next",
+    "slide": "Slide",
+    "exportTitle": "Export your recap",
+    "cardEyebrow": "{{year}} Reading Wrapped",
+    "cardTitle": "My Year in Books",
+    "booksReadShort": "Books",
+    "pagesReadShort": "Pages",
+    "cardTopGenre": "Mostly reading {{genre}}",
+    "cardBrand": "Book Tracker",
+    "exporting": "Exporting…",
+    "exportButton": "Export {{ratio}} PNG",
+    "exportFailedTitle": "Export failed",
+    "exportFailedDesc": "Something went wrong creating the image. Please try again."
   }
 }

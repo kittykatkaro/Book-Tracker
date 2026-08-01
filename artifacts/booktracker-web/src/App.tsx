@@ -15,6 +15,7 @@ import { Library } from "@/pages/library";
 import { AddBook } from "@/pages/add-book";
 import { BookDetail } from "@/pages/book-detail";
 import { Stats } from "@/pages/stats";
+import { Wrapped } from "@/pages/wrapped";
 import { Clubs } from "@/pages/clubs";
 import { ClubDetail } from "@/pages/club-detail";
 import { Settings } from "@/pages/settings";
@@ -265,6 +266,9 @@ function Router() {
       </Route>
       <Route path="/stats">
         <ProtectedPage><Stats /></ProtectedPage>
+      </Route>
+      <Route path="/wrapped">
+        <ProtectedPage><Wrapped /></ProtectedPage>
       </Route>
       <Route path="/clubs">
         <ProtectedPage><Clubs /></ProtectedPage>

@@ -139,7 +139,8 @@
     "toReadList": "Leseliste",
     "topGenres": "Top-Genres",
     "noGenreData": "Noch zu wenig Daten. Füge Büchern Genres hinzu!",
-    "count": "Anzahl"
+    "count": "Anzahl",
+    "viewWrapped": "Dein Wrapped ansehen"
   },
   "clubs": {
     "title": "Buchklubs",
@@ -346,5 +347,38 @@
   },
   "lang": {
     "switchTo": "English"
+  },
+  "wrapped": {
+    "backToStats": "Zurück zu Statistiken",
+    "noDataTitle": "Noch nicht genug Daten",
+    "noDataDesc": "Beende mindestens ein Buch, um dein Wrapped freizuschalten.",
+    "title": "Dein Lese-Rückblick",
+    "subtitle": "Ein teilbarer Rückblick auf dein Lesejahr.",
+    "yourYear": "Dein Jahr {{year}} in Büchern",
+    "introTitle": "Lass uns dein Jahr zusammenfassen",
+    "booksReadLabel": "Bücher beendet in {{year}}",
+    "pagesReadLabel": "gelesene Seiten",
+    "topGenreLabel": "Dein Top-Genre",
+    "topGenreCount": "{{count}} Bücher",
+    "topRatedLabel": "Dein bestbewertetes Buch",
+    "longestLabel": "Dein längstes Buch",
+    "pagesCount": "{{count}} Seiten",
+    "busiestMonthDesc": "dein aktivster Monat mit {{count}} beendeten Büchern",
+    "recapReady": "Dein Rückblick ist bereit",
+    "recapDesc": "Exportiere unten eine teilbare Karte im passenden Format.",
+    "prevSlide": "Zurück",
+    "nextSlide": "Weiter",
+    "slide": "Folie",
+    "exportTitle": "Rückblick exportieren",
+    "cardEyebrow": "Lese-Rückblick {{year}}",
+    "cardTitle": "Mein Jahr in Büchern",
+    "booksReadShort": "Bücher",
+    "pagesReadShort": "Seiten",
+    "cardTopGenre": "Hauptsächlich {{genre}}",
+    "cardBrand": "Book Tracker",
+    "exporting": "Exportiere…",
+    "exportButton": "{{ratio}} PNG exportieren",
+    "exportFailedTitle": "Export fehlgeschlagen",
+    "exportFailedDesc": "Beim Erstellen des Bildes ist ein Fehler aufgetreten. Bitte versuche es erneut."
   }
 }
