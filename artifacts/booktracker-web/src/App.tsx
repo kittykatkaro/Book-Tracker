@@ -15,6 +15,7 @@ import { Library } from "@/pages/library";
 import { AddBook } from "@/pages/add-book";
 import { BookDetail } from "@/pages/book-detail";
 import { Stats } from "@/pages/stats";
+import { Wrapped } from "@/pages/wrapped";
 import { Clubs } from "@/pages/clubs";
 import { ClubDetail } from "@/pages/club-detail";
 import { Settings } from "@/pages/settings";
@@ -266,6 +267,9 @@ function Router() {
       <Route path="/stats">
         <ProtectedPage><Stats /></ProtectedPage>
       </Route>
+      <Route path="/wrapped">
+        <ProtectedPage><Wrapped /></ProtectedPage>
+      </Route>
       <Route path="/clubs">
         <ProtectedPage><Clubs /></ProtectedPage>
       </Route>
@@ -323,7 +327,12 @@ function ClerkProviderWithRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      themes={["light", "dark", "theme-dark-academia", "theme-cozy-nook", "theme-pastel-sunset", "theme-modern-social"]}
+    >
       <WouterRouter base={basePath}>
         <ClerkProviderWithRoutes />
       </WouterRouter>

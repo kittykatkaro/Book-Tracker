@@ -9,6 +9,7 @@ import {
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import objectsRouter from "./routes/objects.js";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -56,6 +57,10 @@ app.use(
     ),
   })),
 );
+
+// Mounted at the root (not under /api) — coverUrl values are stored as
+// root-relative paths like "/objects/<id>".
+app.use(objectsRouter);
 
 app.use("/api", router);
 

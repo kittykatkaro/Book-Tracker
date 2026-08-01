@@ -2,7 +2,9 @@ import { useGetBookStats } from "@workspace/api-client-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
-import { Library, BookOpen, CheckCircle2, Star, TrendingUp } from "lucide-react"
+import { Library, BookOpen, CheckCircle2, Star, TrendingUp, Sparkles } from "lucide-react"
+import { Link } from "wouter"
+import { Button } from "@/components/ui/button"
 import { useTranslation } from "react-i18next"
 
 export function Stats() {
@@ -26,9 +28,17 @@ export function Stats() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div>
-        <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{t("stats.title")}</h1>
-        <p className="text-muted-foreground mt-1 text-lg">{t("stats.subtitle")}</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{t("stats.title")}</h1>
+          <p className="text-muted-foreground mt-1 text-lg">{t("stats.subtitle")}</p>
+        </div>
+        <Link href="/wrapped">
+          <Button className="rounded-full gap-2" data-testid="button-view-wrapped">
+            <Sparkles className="h-4 w-4" />
+            {t("stats.viewWrapped")}
+          </Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">

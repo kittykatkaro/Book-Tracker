@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { Star, BookOpen, Upload, Sparkles, Loader2, Wand2 } from "lucide-react"
+import { Star, BookOpen, Upload, Sparkles, Loader2, Wand2, Search, X } from "lucide-react"
 import { Link } from "wouter"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { ImportBooksDialog } from "@/components/import-books-dialog"
 import { useQueryClient } from "@tanstack/react-query"
 import { useUser } from "@clerk/react"
@@ -97,6 +97,7 @@ export function Library() {
   const { user, isLoaded: clerkLoaded } = useUser()
   const qc = useQueryClient()
   const [tab, setTab] = useState<'all' | 'reading' | 'want_to_read' | 'read'>('all')
+  const [query, setQuery] = useState('')
   const [importOpen, setImportOpen] = useState(false)
   const [enrichingCount, setEnrichingCount] = useState(0)
   const enrichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -159,6 +160,18 @@ export function Library() {
   const { data: books, isLoading } = useListBooks(
     tab === 'all' ? undefined : { status: tab }
   )
+
+  const filteredBooks = useMemo(() => {
+    if (!books) return books
+    const q = query.trim().toLowerCase()
+    if (!q) return books
+    return books.filter(
+      (b) =>
+        b.title.toLowerCase().includes(q) ||
+        b.author.toLowerCase().includes(q) ||
+        (b.genre?.toLowerCase().includes(q) ?? false)
+    )
+  }, [books, query])
 
   const { data: allBooks } = useListBooks()
   const hasBooksWithMissingFields = (allBooks ?? []).some(
@@ -250,6 +263,28 @@ export function Library() {
         </div>
       )}
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("library.searchPlaceholder")}
+          className="w-full rounded-full border border-border/60 bg-card/50 pl-9 pr-9 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          data-testid="input-library-search"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label={t("library.clearSearch")}
+            data-testid="button-clear-search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       <Tabs defaultValue="all" onValueChange={(v) => setTab(v as any)} className="w-full">
         <TabsList className="bg-transparent border-b rounded-none w-full justify-start h-auto p-0 gap-6">
           <TabsTrigger 
@@ -318,9 +353,26 @@ export function Library() {
                 </button>
               )}
             </div>
+          ) : filteredBooks && filteredBooks.length === 0 ? (
+            <div className="text-center py-16 px-4 border border-dashed rounded-2xl bg-white/40 dark:bg-black/20">
+              <div className="mx-auto w-14 h-14 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <Search className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-serif text-lg font-medium mb-2">{t("library.noSearchResultsTitle")}</h3>
+              <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+                {t("library.noSearchResults", { query })}
+              </p>
+              <button
+                onClick={() => setQuery("")}
+                className="text-sm text-primary hover:underline underline-offset-4"
+                data-testid="link-clear-search-empty"
+              >
+                {t("library.clearSearch")}
+              </button>
+            </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {books.map(book => (
+              {filteredBooks!.map(book => (
                 <BookCard key={book.id} book={book} />
               ))}
             </div>

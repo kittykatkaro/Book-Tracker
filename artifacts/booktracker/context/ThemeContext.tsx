@@ -2,11 +2,23 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';
 
-type ThemeMode = 'light' | 'dark' | 'system';
+// Named palettes are fixed, complete looks — picking one is an alternative
+// to (not a variant of) light/dark/system, matching how the web app's
+// theme picker works.
+export const PALETTE_IDS = [
+  'dark-academia',
+  'cozy-nook',
+  'pastel-sunset',
+  'modern-social',
+] as const;
+export type PaletteId = (typeof PALETTE_IDS)[number];
+
+type ThemeMode = 'light' | 'dark' | 'system' | PaletteId;
+export type ResolvedTheme = 'light' | 'dark' | PaletteId;
 
 interface ThemeContextType {
   theme: ThemeMode;
-  resolvedTheme: 'light' | 'dark';
+  resolvedTheme: ResolvedTheme;
   setTheme: (theme: ThemeMode) => void;
 }
 
@@ -14,7 +26,12 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 const STORAGE_KEY = 'app_theme';
 
-function resolveTheme(theme: ThemeMode, system: 'light' | 'dark' | null): 'light' | 'dark' {
+function isPaletteId(value: string): value is PaletteId {
+  return (PALETTE_IDS as readonly string[]).includes(value);
+}
+
+function resolveTheme(theme: ThemeMode, system: 'light' | 'dark' | null): ResolvedTheme {
+  if (isPaletteId(theme)) return theme;
   if (theme === 'system') return system ?? 'light';
   return theme;
 }
@@ -27,8 +44,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((saved) => {
-        if (saved === 'light' || saved === 'dark' || saved === 'system') {
-          setThemeState(saved);
+        if (saved === 'light' || saved === 'dark' || saved === 'system' || (saved && isPaletteId(saved))) {
+          setThemeState(saved as ThemeMode);
         }
       })
       .finally(() => setLoaded(true));
