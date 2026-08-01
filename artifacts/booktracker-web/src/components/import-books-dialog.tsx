@@ -69,10 +69,11 @@ export function ImportBooksDialog({
   const [books, setBooks] = useState<SelectableBook[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ imported: number; total: number } | null>(null);
 
   const reset = () => {
     setStep("upload"); setBooks([]); setParseError(null);
-    setParsing(false); setDragging(false);
+    setParsing(false); setDragging(false); setImportProgress(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -118,10 +119,37 @@ export function ImportBooksDialog({
   const toggleOne = (i: number) => setBooks((bs) => bs.map((b, j) => (j === i ? { ...b, selected: !b.selected } : b)));
   const selectedCount = books.filter((b) => b.selected).length;
 
+  const pollImportStatus = (jobId: string): Promise<{ imported: number; skipped: number; enriching: number }> => {
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        try {
+          const res = await fetch(`/api/books/import/status/${jobId}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? t("importDialog.errorImportFailed"));
+
+          if (data.status === "processing") {
+            setImportProgress({ imported: data.imported, total: data.total });
+            setTimeout(poll, 1000);
+            return;
+          }
+          if (data.status === "failed") {
+            reject(new Error(data.error ?? t("importDialog.errorImportFailed")));
+            return;
+          }
+          resolve({ imported: data.imported, skipped: data.skipped, enriching: data.enriching ?? 0 });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      poll();
+    });
+  };
+
   const confirm = async () => {
     const selected = books.filter((b) => b.selected);
     if (!selected.length) return;
     setStep("importing");
+    setImportProgress({ imported: 0, total: selected.length });
     try {
       const res = await fetch("/api/books/import/confirm", {
         method: "POST",
@@ -130,14 +158,21 @@ export function ImportBooksDialog({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? t("importDialog.errorImportFailed"));
+
+      // The server processes the import in the background (this can take
+      // a while for large files) and we poll until it's done rather than
+      // holding the HTTP request open, which is what used to risk timing
+      // out on 500+ record imports.
+      const result = await pollImportStatus(data.jobId);
+
       await qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
       toast({
-        title: t("importDialog.importedCount", { count: data.imported }),
-        description: data.skipped
-          ? t("importDialog.skippedDesc", { count: data.skipped })
+        title: t("importDialog.importedCount", { count: result.imported }),
+        description: result.skipped
+          ? t("importDialog.skippedDesc", { count: result.skipped })
           : t("importDialog.allAdded"),
       });
-      onImported?.({ imported: data.imported, skipped: data.skipped, enriching: data.enriching ?? 0 });
+      onImported?.(result);
       handleClose();
     } catch (err: any) {
       toast({ title: t("importDialog.errorImportFailed"), description: err?.message, variant: "destructive" });
@@ -296,7 +331,11 @@ export function ImportBooksDialog({
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="h-10 w-10 text-primary animate-spin" />
-            <p className="text-muted-foreground">{t("importDialog.addingCount", { count: selectedCount })}</p>
+            <p className="text-muted-foreground">
+              {importProgress && importProgress.imported > 0
+                ? t("importDialog.addingProgress", { imported: importProgress.imported, total: importProgress.total })
+                : t("importDialog.addingCount", { count: selectedCount })}
+            </p>
           </div>
         )}
       </DialogContent>

@@ -12,6 +12,11 @@ import { db, booksTable } from "@workspace/db";
 import { enrichBooksInBackground } from "../lib/enrich.js";
 import { classifyGenre, aggregateGenreCounts } from "../lib/genres.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
+import {
+  isbnLookupLimiter,
+  isbnBulkLookupLimiter,
+  enrichAllLimiter,
+} from "../lib/rate-limit.js";
 
 const router = Router();
 
@@ -189,7 +194,7 @@ router.get("/stats", requireAuth, async (req, res) => {
 });
 
 // GET /api/books/isbn-lookup  (must be before /:id — no auth required)
-router.get("/isbn-lookup", async (req, res) => {
+router.get("/isbn-lookup", isbnLookupLimiter, async (req, res) => {
   const isbn = req.query.isbn as string;
   if (!isbn) return res.status(400).json({ error: "isbn is required" });
 
@@ -242,7 +247,7 @@ router.get("/isbn-lookup", async (req, res) => {
 });
 
 // POST /api/books/isbn-bulk-lookup
-router.post("/isbn-bulk-lookup", async (req, res) => {
+router.post("/isbn-bulk-lookup", isbnBulkLookupLimiter, async (req, res) => {
   const { isbns } = req.body as { isbns?: unknown };
   if (!Array.isArray(isbns) || isbns.length === 0) {
     return res.status(400).json({ error: "isbns must be a non-empty array" });
@@ -388,7 +393,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 });
 
 // POST /api/books/enrich-all  (must be before /:id)
-router.post("/enrich-all", requireAuth, async (req, res) => {
+router.post("/enrich-all", requireAuth, enrichAllLimiter, async (req, res) => {
   try {
     const { userId } = req as AuthedRequest;
 

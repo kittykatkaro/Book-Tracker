@@ -72,11 +72,13 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
   const [step, setStep] = useState<Step>('idle');
   const [books, setBooks] = useState<SelectableBook[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{ imported: number; total: number } | null>(null);
 
   const reset = () => {
     setStep('idle');
     setBooks([]);
     setError(null);
+    setImportProgress(null);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -149,11 +151,44 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
 
   const selectedCount = books.filter((b) => b.selected).length;
 
+  // ---- Poll a background import job until it finishes ----
+  const pollImportStatus = (
+    jobId: string,
+    token: string | null,
+  ): Promise<{ imported: number; skipped: number; enriching: number }> => {
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/books/import/status/${jobId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? t('import.errorImport'));
+
+          if (data.status === 'processing') {
+            setImportProgress({ imported: data.imported, total: data.total });
+            setTimeout(poll, 1000);
+            return;
+          }
+          if (data.status === 'failed') {
+            reject(new Error(data.error ?? t('import.errorImport')));
+            return;
+          }
+          resolve({ imported: data.imported, skipped: data.skipped, enriching: data.enriching ?? 0 });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      poll();
+    });
+  };
+
   // ---- Confirm ----
   const confirm = async () => {
     const selected = books.filter((b) => b.selected);
     if (!selected.length) return;
     setStep('importing');
+    setImportProgress({ imported: 0, total: selected.length });
     try {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/books/import/confirm`, {
@@ -167,11 +202,16 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? t('import.errorImport'));
 
+      // The server runs the import as a background job (this can take a
+      // while for large files) and we poll until it's done rather than
+      // holding the request open, avoiding a timeout on 500+ record imports.
+      const result = await pollImportStatus(data.jobId, token);
+
       await qc.invalidateQueries({ queryKey: getListBooksQueryKey() });
 
-      const msg = data.skipped
-        ? t('import.resultSkipped', { imported: data.imported, skipped: data.skipped })
-        : t('import.resultAdded', { count: data.imported });
+      const msg = result.skipped
+        ? t('import.resultSkipped', { imported: result.imported, skipped: result.skipped })
+        : t('import.resultAdded', { count: result.imported });
 
       Alert.alert(t('import.complete'), msg, [{ text: 'OK', onPress: handleClose }]);
     } catch (err: any) {
@@ -370,7 +410,9 @@ export function ImportModal({ visible, onClose }: ImportModalProps) {
           <View style={styles.importingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.importingText, { color: colors.mutedForeground }]}>
-              {t('import.addingCount', { count: selectedCount })}
+              {importProgress && importProgress.imported > 0
+                ? t('import.addingProgress', { imported: importProgress.imported, total: importProgress.total })
+                : t('import.addingCount', { count: selectedCount })}
             </Text>
           </View>
         )}
