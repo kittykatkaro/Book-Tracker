@@ -64,7 +64,9 @@
     "expo-clipboard": "^8.0.8",
     "expo-document-picker": "^14.0.8",
     "expo-localization": "^17.0.9",
+    "expo-sharing": "~14.0.8",
     "i18next": "^26.3.6",
-    "react-i18next": "^17.0.9"
+    "react-i18next": "^17.0.9",
+    "react-native-view-shot": "4.0.3"
   }
 }

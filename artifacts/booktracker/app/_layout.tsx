@@ -65,6 +65,7 @@ function InitialLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
       <Stack.Screen name="add-book" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="wrapped" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
       <Stack.Screen name="book/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>

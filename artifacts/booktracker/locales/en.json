@@ -37,7 +37,8 @@
     "avgRating": "Average Rating",
     "outOfFive": "out of 5 stars",
     "topGenres": "Top Genres",
-    "addBooksForStats": "Add books to see your reading stats"
+    "addBooksForStats": "Add books to see your reading stats",
+    "viewWrapped": "View Wrapped"
   },
   "clubs": {
     "title": "Book Clubs",
@@ -246,5 +247,35 @@
   },
   "lang": {
     "switchTo": "Deutsch"
+  },
+  "wrapped": {
+    "noDataTitle": "Not enough data yet",
+    "noDataDesc": "Finish at least one book to unlock your Wrapped.",
+    "title": "Your Reading Wrapped",
+    "yourYear": "Your {{year}} in books",
+    "introTitle": "Let's recap your year",
+    "booksReadLabel": "books finished in {{year}}",
+    "pagesReadLabel": "pages turned",
+    "topGenreLabel": "Your top genre",
+    "topGenreCount": "{{count}} books",
+    "topRatedLabel": "Your top-rated read",
+    "longestLabel": "Your longest read",
+    "pagesCount": "{{count}} pages",
+    "busiestMonthDesc": "your busiest month with {{count}} books finished",
+    "recapReady": "Your recap is ready",
+    "exportTitle": "Export your recap",
+    "cardEyebrow": "{{year}} Reading Wrapped",
+    "cardTitle": "My Year in Books",
+    "booksReadShort": "Books",
+    "pagesReadShort": "Pages",
+    "cardTopGenre": "Mostly reading {{genre}}",
+    "cardBrand": "Book Tracker",
+    "exporting": "Exporting…",
+    "exportButton": "Export {{ratio}} PNG",
+    "exportFailedTitle": "Export failed",
+    "exportFailedDesc": "Something went wrong creating the image. Please try again.",
+    "recapDescMobile": "Pick a format below and share your recap card.",
+    "sharingUnavailable": "Sharing isn't available on this device.",
+    "shareDialogTitle": "Share your Reading Wrapped"
   }
 }

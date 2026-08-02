@@ -6,6 +6,8 @@ import { useBooks } from '@/context/BooksContext';
 import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { aggregateGenreCounts } from '@workspace/api-client-react';
+import { useRouter } from 'expo-router';
+import { Pressable } from 'react-native';
 
 function StatCard({ icon, label, value, color, colors }: {
   icon: string; label: string; value: number; color: string; colors: ReturnType<typeof useColors>;
@@ -41,6 +43,7 @@ export default function StatsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { books } = useBooks();
+  const router = useRouter();
 
   const stats = useMemo(() => {
     const thisYear = new Date().getFullYear();
@@ -78,11 +81,22 @@ export default function StatsScreen() {
       contentContainerStyle={{ paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 20 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ paddingTop: topPad + 16, paddingHorizontal: 20, marginBottom: 20 }}>
-        <Text style={[styles.pageTitle, { color: colors.foreground }]}>{t('stats.title')}</Text>
-        <Text style={[styles.pageSubtitle, { color: colors.mutedForeground }]}>
-          {t('stats.readingYear', { year: stats.thisYear })}
-        </Text>
+      <View style={{ paddingTop: topPad + 16, paddingHorizontal: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.pageTitle, { color: colors.foreground }]}>{t('stats.title')}</Text>
+          <Text style={[styles.pageSubtitle, { color: colors.mutedForeground }]}>
+            {t('stats.readingYear', { year: stats.thisYear })}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.push('/wrapped' as any)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 }}
+        >
+          <Feather name="star" size={14} color={colors.primaryForeground} />
+          <Text style={{ color: colors.primaryForeground, fontFamily: 'Inter_600SemiBold', fontSize: 13 }}>
+            {t('stats.viewWrapped')}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.grid}>
