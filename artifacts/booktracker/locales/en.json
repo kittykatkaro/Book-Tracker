@@ -189,6 +189,9 @@
   "auth": {
     "signInTitle": "Welcome back",
     "signInSubtitle": "Sign in to your reading journal",
+    "continueWithGoogle": "Continue with Google",
+    "orDivider": "or",
+    "genericError": "Something went wrong. Please try again.",
     "emailLabel": "EMAIL",
     "emailPlaceholder": "your@email.com",
     "passwordLabel": "PASSWORD",

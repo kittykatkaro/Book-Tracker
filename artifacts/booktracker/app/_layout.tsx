@@ -24,7 +24,11 @@ SplashScreen.preventAutoHideAsync();
 
 const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (apiDomain) {
-  setBaseUrl(`https://${apiDomain}/api`);
+  // The generated API client already bakes "/api" into every request path
+// (e.g. getListBooksUrl() returns "/api/books"), so the base URL here must
+// be just the domain — adding "/api" again here doubled it to
+// "/api/api/books" and 404'd on every request.
+setBaseUrl(`https://${apiDomain}`);
 }
 
 const queryClient = new QueryClient({

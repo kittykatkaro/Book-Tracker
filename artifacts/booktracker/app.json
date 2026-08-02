@@ -16,7 +16,13 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.kittykatkaro.booktracker"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -34,11 +40,26 @@
         {
           "cameraPermission": "Allow Book Tracker to use your camera to scan ISBN barcodes."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "packagingOptions": {
+              "exclude": ["META-INF/versions/9/OSGI-INF/MANIFEST.MF"]
+            }
+          }
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "41a46345-3c04-406e-8901-62804344c87e"
+      }
     }
   }
 }

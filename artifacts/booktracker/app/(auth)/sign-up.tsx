@@ -15,6 +15,7 @@ import { useSignUp } from '@clerk/expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useTranslation } from 'react-i18next';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export default function SignUpScreen() {
   const colors = useColors();
@@ -28,6 +29,12 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+
+  // See sign-in.tsx for why this fallback exists — errors.global can be
+  // present without a usable .message in some cases.
+  const globalErrorMessage = errors?.global
+    ? (errors.global.message?.trim() || t('auth.genericError'))
+    : null;
 
   const isLoading = fetchStatus === 'fetching';
   const verifying =
@@ -118,9 +125,9 @@ export default function SignUpScreen() {
               )}
             </View>
 
-            {errors?.global && (
+            {globalErrorMessage && (
               <View style={[s.errorBox, { backgroundColor: '#E55A4E18', borderColor: '#E55A4E40' }]}>
-                <Text style={[s.errorBoxText, { color: '#E55A4E' }]}>{errors.global.message}</Text>
+                <Text style={[s.errorBoxText, { color: '#E55A4E' }]}>{globalErrorMessage}</Text>
               </View>
             )}
 
@@ -171,6 +178,14 @@ export default function SignUpScreen() {
         </View>
 
         <View style={s.form}>
+          <GoogleSignInButton />
+
+          <View style={s.divider}>
+            <View style={[s.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[s.dividerText, { color: colors.mutedForeground }]}>{t('auth.orDivider')}</Text>
+            <View style={[s.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
           <View style={s.field}>
             <Text style={[s.label, { color: colors.mutedForeground }]}>{t('auth.usernameLabel')}</Text>
             <TextInput
@@ -240,9 +255,9 @@ export default function SignUpScreen() {
             )}
           </View>
 
-          {errors?.global && (
+          {globalErrorMessage && (
             <View style={[s.errorBox, { backgroundColor: '#E55A4E18', borderColor: '#E55A4E40' }]}>
-              <Text style={[s.errorBoxText, { color: '#E55A4E' }]}>{errors.global.message}</Text>
+              <Text style={[s.errorBoxText, { color: '#E55A4E' }]}>{globalErrorMessage}</Text>
             </View>
           )}
 
@@ -300,6 +315,9 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       fontSize: 15, fontFamily: 'Inter_400Regular',
     },
     fieldError: { fontSize: 12, color: '#E55A4E', fontFamily: 'Inter_400Regular' },
+    divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 2 },
+    dividerLine: { flex: 1, height: 1 },
+    dividerText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
     errorBox: { borderWidth: 1, borderRadius: 10, padding: 12 },
     errorBoxText: { fontSize: 13, fontFamily: 'Inter_400Regular' },
     submitBtn: {

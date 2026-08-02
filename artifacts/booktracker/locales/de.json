@@ -189,6 +189,9 @@
   "auth": {
     "signInTitle": "Willkommen zurück",
     "signInSubtitle": "Melde dich in deinem Lesetagebuch an",
+    "continueWithGoogle": "Mit Google fortfahren",
+    "orDivider": "oder",
+    "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "emailLabel": "E-MAIL",
     "emailPlaceholder": "deine@email.de",
     "passwordLabel": "PASSWORT",

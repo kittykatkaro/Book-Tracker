@@ -103,7 +103,8 @@ export default function AddBookScreen() {
       setLookedUpCoverUrl(result.coverUrl ?? null);
       setLookupResult('success');
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
+    } catch (err) {
+      console.error('[ISBN lookup] single lookup failed:', err);
       setLookupResult('error');
     } finally {
       setLookupLoading(false);
@@ -137,7 +138,8 @@ export default function AddBookScreen() {
           selected: r.status === 'found',
         })),
       );
-    } catch {
+    } catch (err) {
+      console.error('[ISBN lookup] bulk lookup failed:', err);
       /* individual statuses will show error */
     } finally {
       setSetLooking(false);

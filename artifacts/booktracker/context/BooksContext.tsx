@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext } from 'react';
+import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListBooks,
@@ -62,8 +62,17 @@ const BooksContext = createContext<BooksContextType | null>(null);
 export function BooksProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
-  const { data: apiBooks = [], isLoading } = useListBooks();
+  const { data: apiBooks = [], isLoading, error, isError } = useListBooks();
   const books: Book[] = (apiBooks as ApiBook[]).map(toBook);
+
+  // The list query previously failed silently (data defaulted to []),
+  // which is indistinguishable from "you have no books" in the UI.
+  // Logging here at least surfaces the real cause in the console.
+  useEffect(() => {
+    if (isError) {
+      console.error('[BooksContext] Failed to load books:', error);
+    }
+  }, [isError, error]);
 
   const createMutation = useCreateBook();
   const updateMutation = useUpdateBook();

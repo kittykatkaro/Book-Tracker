@@ -3,7 +3,6 @@ import {
   FlatList,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -156,12 +155,7 @@ export default function LibraryScreen() {
       )}
 
       {/* Filter tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
-        style={{ backgroundColor: colors.background }}
-      >
+      <View style={[styles.filters, { backgroundColor: colors.background }]}>
         {FILTERS.map((f) => {
           const active = filter === f.key;
           return (
@@ -186,7 +180,7 @@ export default function LibraryScreen() {
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       {/* Book list */}
       <FlatList
@@ -250,10 +244,34 @@ const styles = StyleSheet.create({
   langBtnText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
   importBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  filters: { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-  filterPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, gap: 5 },
-  filterText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  filterCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 10, minWidth: 20, alignItems: 'center' },
+  filters: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 6 },
+  filterPill: {
+    flex: 1,
+    minWidth: 0,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterText: {
+    flexShrink: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    lineHeight: 15,
+    fontFamily: 'Inter_500Medium',
+  },
+  filterCount: {
+    position: 'absolute',
+    top: 3,
+    right: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 10,
+    minWidth: 17,
+    alignItems: 'center',
+  },
   filterCountText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   listContent: { paddingTop: 4 },
   banner: { marginHorizontal: 16, marginBottom: 8, borderRadius: 16, borderWidth: 1, padding: 14, flexDirection: 'column', gap: 10 },
