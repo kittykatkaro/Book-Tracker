@@ -246,7 +246,18 @@
     "notificationsTitle": "Benachrichtigungen",
     "notificationsDesc": "Leseerinnerungen und Club-Aktivitätsmeldungen.",
     "comingSoon": "Demnächst",
-    "signOut": "Abmelden"
+    "signOut": "Abmelden",
+    "dangerZoneTitle": "Gefahrenzone",
+    "dangerZoneDesc": "Unwiderrufliche Kontoaktionen.",
+    "deleteAccount": "Konto löschen",
+    "deleteAccountDesc": "Löscht dein Konto und alle Daten dauerhaft.",
+    "deleteAccountConfirmTitle": "Konto löschen?",
+    "deleteAccountConfirmBody": "Dies löscht deine Bibliothek und dein Konto dauerhaft. Clubs, die du besitzt, werden – falls möglich – an ein anderes Mitglied übergeben, andernfalls gelöscht, falls du das einzige Mitglied bist. Dies kann nicht rückgängig gemacht werden.",
+    "deleteAccountConfirmTitle2": "Bist du dir absolut sicher?",
+    "deleteAccountConfirmBody2": "Es gibt kein Zurück mehr. Deine Bücher, Bewertungen und dein Konto sind endgültig verloren.",
+    "cancel": "Abbrechen",
+    "deleteAccountAction": "Mein Konto löschen",
+    "deleteAccountFailed": "Dein Konto konnte nicht gelöscht werden. Bitte versuche es erneut."
   },
   "lang": {
     "switchTo": "English"

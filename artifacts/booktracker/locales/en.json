@@ -246,7 +246,18 @@
     "notificationsTitle": "Notifications",
     "notificationsDesc": "Reading reminders and club activity alerts.",
     "comingSoon": "Coming soon",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "dangerZoneTitle": "Danger Zone",
+    "dangerZoneDesc": "Irreversible account actions.",
+    "deleteAccount": "Delete account",
+    "deleteAccountDesc": "Permanently delete your account and all your data.",
+    "deleteAccountConfirmTitle": "Delete your account?",
+    "deleteAccountConfirmBody": "This permanently deletes your library and account. Clubs you own will be handed off to another member if possible, or deleted if you're the only one left. This can't be undone.",
+    "deleteAccountConfirmTitle2": "Are you absolutely sure?",
+    "deleteAccountConfirmBody2": "There's no going back from this. Your books, ratings, and account will be gone for good.",
+    "cancel": "Cancel",
+    "deleteAccountAction": "Delete my account",
+    "deleteAccountFailed": "We couldn't delete your account. Please try again."
   },
   "lang": {
     "switchTo": "Deutsch"

@@ -1,12 +1,25 @@
 import { useState, useEffect } from "react"
 import { useUser, useClerk } from "@clerk/react"
+import { useMutation } from "@tanstack/react-query"
+import { customFetch } from "@workspace/api-client-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { setLanguage } from "@/i18n"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Globe, Bell, LogOut, RotateCcw, Check, Palette } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { Sparkles, Globe, Bell, LogOut, RotateCcw, Check, Palette, AlertTriangle, Loader2 } from "lucide-react"
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "")
 
@@ -53,10 +66,13 @@ export function Settings() {
   const { user } = useUser()
   const { signOut } = useClerk()
   const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
 
   const storageKey = user?.id ? `banner_dismissed_${user.id}` : null
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [bannerReset, setBannerReset] = useState(false)
+  // 0 = closed, 1 = first confirmation, 2 = final confirmation
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0)
 
   useEffect(() => {
     if (!storageKey) return
@@ -69,6 +85,23 @@ export function Settings() {
     setBannerReset(true)
     setTimeout(() => setBannerReset(false), 2000)
   }
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: () =>
+      customFetch("/api/user/account", {
+        method: "DELETE",
+        body: JSON.stringify({ confirm: true }),
+      }),
+    onSuccess: () => {
+      // Account and data are already gone server-side; sign out locally to
+      // clear the session and redirect to the sign-in flow.
+      signOut({ redirectUrl: basePath || "/" })
+    },
+    onError: (err: Error) => {
+      setDeleteStep(0)
+      toast({ title: t("settings.deleteAccount"), description: err.message, variant: "destructive" })
+    },
+  })
 
   const currentLang = i18n.language.startsWith("de") ? "de" : "en"
 
@@ -227,6 +260,90 @@ export function Settings() {
           </div>
         </CardHeader>
       </Card>
+
+      {/* Danger zone */}
+      <Card className="border-destructive/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold">{t("settings.dangerZoneTitle")}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("settings.dangerZoneDesc")}</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">{t("settings.deleteAccount")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.deleteAccountDesc")}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setDeleteStep(1)}
+              className="rounded-full shrink-0"
+              data-testid="button-delete-account"
+            >
+              {t("settings.deleteAccount")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 1: explain what will happen */}
+      <AlertDialog open={deleteStep === 1} onOpenChange={(open) => !open && setDeleteStep(0)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("settings.deleteAccountConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("settings.deleteAccountConfirmBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-delete-account-cancel-1">
+              {t("settings.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => setDeleteStep(2)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-delete-account-continue"
+            >
+              {t("settings.deleteAccount")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Step 2: final, harsher confirmation */}
+      <AlertDialog open={deleteStep === 2} onOpenChange={(open) => !open && setDeleteStep(0)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("settings.deleteAccountConfirmTitle2")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("settings.deleteAccountConfirmBody2")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleteAccountMutation.isPending}
+              data-testid="button-delete-account-cancel-2"
+            >
+              {t("settings.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                deleteAccountMutation.mutate()
+              }}
+              disabled={deleteAccountMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
+              data-testid="button-delete-account-confirm"
+            >
+              {deleteAccountMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {t("settings.deleteAccountAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Account / Sign out */}
       <div className="pt-2 border-t border-border/40">

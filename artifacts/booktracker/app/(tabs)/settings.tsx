@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -9,7 +11,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useMutation } from '@tanstack/react-query';
 import { useUser, useClerk } from '@clerk/expo';
+import { customFetch } from '@workspace/api-client-react';
 import { useTranslation } from 'react-i18next';
 import { setLanguage } from '@/i18n';
 import { useColors } from '@/hooks/useColors';
@@ -50,6 +54,51 @@ export default function SettingsScreen() {
     setBannerDismissed(false);
     setBannerResetDone(true);
     setTimeout(() => setBannerResetDone(false), 2000);
+  };
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: () =>
+      customFetch('/api/user/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ confirm: true }),
+      }),
+    onSuccess: () => {
+      // The account and its data are gone server-side; sign out locally so
+      // the auth-gated root layout redirects to the sign-in flow.
+      signOut();
+    },
+    onError: () => {
+      Alert.alert(t('settings.deleteAccount'), t('settings.deleteAccountFailed'));
+    },
+  });
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('settings.deleteAccountConfirmTitle'),
+      t('settings.deleteAccountConfirmBody'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteAccount'),
+          style: 'destructive',
+          onPress: () => {
+            // Destructive + irreversible: require a second explicit confirm.
+            Alert.alert(
+              t('settings.deleteAccountConfirmTitle2'),
+              t('settings.deleteAccountConfirmBody2'),
+              [
+                { text: t('settings.cancel'), style: 'cancel' },
+                {
+                  text: t('settings.deleteAccountAction'),
+                  style: 'destructive',
+                  onPress: () => deleteAccountMutation.mutate(),
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const currentLang = i18n.language.startsWith('de') ? 'de' : 'en';
@@ -262,6 +311,45 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Danger zone */}
+        <View style={[styles.section, styles.dangerSection, { backgroundColor: colors.card, borderColor: '#E5504A40' }]}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.iconCircle, { backgroundColor: '#E5504A18' }]}>
+              <Feather name="alert-triangle" size={16} color="#E5504A" />
+            </View>
+            <View style={styles.sectionHeaderText}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                {t('settings.dangerZoneTitle')}
+              </Text>
+              <Text style={[styles.sectionDesc, { color: colors.mutedForeground }]}>
+                {t('settings.dangerZoneDesc')}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.row, { borderTopColor: colors.border }]}>
+            <View style={styles.rowLeft}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                {t('settings.deleteAccount')}
+              </Text>
+              <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+                {t('settings.deleteAccountDesc')}
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={deleteAccountMutation.isPending}
+              style={[styles.deleteBtn, { borderColor: '#E5504A' }]}
+            >
+              {deleteAccountMutation.isPending ? (
+                <ActivityIndicator size="small" color="#E5504A" />
+              ) : (
+                <Text style={styles.deleteBtnText}>{t('settings.deleteAccount')}</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
         {/* Sign out */}
         <Pressable
           onPress={() => signOut()}
@@ -292,6 +380,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionMuted: { opacity: 0.6 },
+  dangerSection: { borderWidth: 1 },
+  deleteBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  deleteBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#E5504A' },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
