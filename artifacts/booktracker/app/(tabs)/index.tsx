@@ -167,7 +167,12 @@ export default function LibraryScreen() {
                 { backgroundColor: active ? colors.primary : colors.secondary, borderColor: active ? colors.primary : colors.border },
               ]}
             >
-              <Text style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+              <Text
+                style={[styles.filterText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                allowFontScaling={false}
+              >
                 {f.label}
               </Text>
               {counts[f.key] > 0 ? (
@@ -184,6 +189,7 @@ export default function LibraryScreen() {
 
       {/* Book list */}
       <FlatList
+        style={styles.list}
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <BookCard book={item} />}
@@ -253,15 +259,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   filterText: {
     flexShrink: 1,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 11,
+    lineHeight: 14,
     fontFamily: 'Inter_500Medium',
   },
+  list: { flex: 1 },
   filterCount: {
     position: 'absolute',
     top: 3,
